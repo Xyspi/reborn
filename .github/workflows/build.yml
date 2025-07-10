@@ -39,6 +39,7 @@ jobs:
       run: npm run build:win
       env:
         ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+        CSC_IDENTITY_AUTO_DISCOVERY: false
       
     - name: Build Electron (Linux)
       if: matrix.os == 'ubuntu-latest'  

@@ -39,9 +39,11 @@
     "publish": null,
     "win": {
       "target": "nsis",
-      "sign": false,
+      "sign": null,
       "verifyUpdateCodeSignature": false,
-      "publish": null
+      "publish": null,
+      "certificateFile": null,
+      "certificatePassword": null
     },
     "linux": {
       "target": "AppImage",
