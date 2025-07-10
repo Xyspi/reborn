@@ -46,7 +46,10 @@ export function MainContent() {
 
   const selectOutputDir = async () => {
     if (!window.electronAPI) {
-      alert('Electron API not available');
+      // Mock for web development
+      const mockDir = '/home/user/Downloads/htb-courses';
+      updateConfig({ outputDir: mockDir });
+      console.log('🔧 Mock directory selected:', mockDir);
       return;
     }
     

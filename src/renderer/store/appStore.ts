@@ -109,11 +109,43 @@ export const useAppStore = create<AppState>()(
       startScraping: async () => {
         const { config, urls } = get();
         
-        if (!window.electronAPI) {
-          throw new Error('Electron API not available');
+        if (!config.cookies || urls.length === 0 || !config.outputDir) {
+          throw new Error('Missing required configuration');
         }
-        
+
         set({ isRunning: true, isPaused: false });
+        
+        if (!window.electronAPI) {
+          // Mock for web development
+          console.log('🔧 Mock scraping started with config:', { config, urls });
+          
+          // Simulate progress
+          let current = 0;
+          const total = urls.length * 5; // Simulate 5 steps per URL
+          
+          const mockProgress = () => {
+            current++;
+            set({ 
+              progress: { 
+                current, 
+                total, 
+                filename: `mock-file-${current}.md`,
+                url: urls[Math.floor(current / 5)] || urls[0],
+                status: 'processing'
+              } 
+            });
+            
+            if (current >= total) {
+              set({ isRunning: false, isPaused: false });
+              console.log('🔧 Mock scraping completed');
+            } else {
+              setTimeout(mockProgress, 1000);
+            }
+          };
+          
+          setTimeout(mockProgress, 1000);
+          return;
+        }
         
         // Set up progress listener
         window.electronAPI.scraper.onProgress((progress: any) => {

@@ -7,6 +7,7 @@
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "test-electron": "electron test-electron.js",
     "build": "npm run build:ts && npm run build:vite && electron-builder",
     "build:ts": "tsc -p tsconfig.main.json",
     "build:vite": "vite build",

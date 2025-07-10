@@ -9,8 +9,12 @@ export default defineConfig({
   build: {
     outDir: join(__dirname, 'dist/renderer'),
     emptyOutDir: true,
+    // Fix asset paths for Electron
+    assetsDir: 'assets',
   },
   server: {
     port: 5173,
   },
+  // Use relative paths for assets in production
+  base: './',
 });

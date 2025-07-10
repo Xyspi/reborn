@@ -13,6 +13,10 @@ let scraperService: ScraperService;
 let fileService: FileService;
 
 const createWindow = () => {
+  const preloadPath = join(__dirname, 'preload.js');
+  console.log('🔍 Preload path:', preloadPath);
+  console.log('🔍 Preload exists:', require('fs').existsSync(preloadPath));
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -22,22 +26,56 @@ const createWindow = () => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: join(__dirname, 'preload.js'),
+      preload: preloadPath,
     },
   });
 
   if (process.env.NODE_ENV === 'development') {
+    console.log('🟢 Development mode - Loading from localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load from the built dist/renderer directory
     const indexPath = join(__dirname, '../renderer/index.html');
-    mainWindow.loadFile(indexPath);
+    console.log('🟡 Production mode - Loading from:', indexPath);
+    console.log('🔍 File exists:', require('fs').existsSync(indexPath));
+    console.log('🔍 Current __dirname:', __dirname);
+    console.log('🔍 Process cwd:', process.cwd());
+    
+    mainWindow.loadFile(indexPath).catch(error => {
+      console.error('❌ Failed to load index.html:', error);
+    });
+    
+    // Always open DevTools in production for debugging
+    mainWindow.webContents.openDevTools();
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Debug resource loading
+  mainWindow.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    console.log('🔍 Resource request:', details.url);
+    callback({});
+  });
+
+  mainWindow.webContents.session.webRequest.onErrorOccurred((details) => {
+    console.error('❌ Resource error:', details.url, details.error);
+  });
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('❌ Page load failed:', errorCode, errorDescription, validatedURL);
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('✅ Page loaded successfully');
+    
+    // Check if electronAPI is available
+    mainWindow?.webContents.executeJavaScript('window.electronAPI ? "✅ electronAPI available" : "❌ electronAPI NOT available"')
+      .then(result => console.log('🔍 API check:', result))
+      .catch(err => console.error('❌ API check failed:', err));
   });
 };
 
