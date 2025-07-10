@@ -305,7 +305,7 @@ export function MainContent() {
                         }
                       })}
                     />
-                    Callout blocks (ad-note, ad-example, etc.)
+                    Callout blocks ([!note], [!example], etc.)
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -358,27 +358,27 @@ export function MainContent() {
                   <div className="mapping-item">
                     <span className="mapping-source">Info boxes</span>
                     <span className="mapping-arrow">→</span>
-                    <span className="mapping-target">ad-info</span>
+                    <span className="mapping-target">[!info]</span>
                   </div>
                   <div className="mapping-item">
                     <span className="mapping-source">Examples & Exercises</span>
                     <span className="mapping-arrow">→</span>
-                    <span className="mapping-target">ad-example</span>
+                    <span className="mapping-target">[!example]</span>
                   </div>
                   <div className="mapping-item">
                     <span className="mapping-source">Important notes</span>
                     <span className="mapping-arrow">→</span>
-                    <span className="mapping-target">ad-note</span>
+                    <span className="mapping-target">[!note]</span>
                   </div>
                   <div className="mapping-item">
                     <span className="mapping-source">Abstracts & Summaries</span>
                     <span className="mapping-arrow">→</span>
-                    <span className="mapping-target">ad-abstract</span>
+                    <span className="mapping-target">[!abstract]</span>
                   </div>
                   <div className="mapping-item">
                     <span className="mapping-source">Warnings</span>
                     <span className="mapping-arrow">→</span>
-                    <span className="mapping-target">ad-warning</span>
+                    <span className="mapping-target">[!warning]</span>
                   </div>
                 </div>
               </div>

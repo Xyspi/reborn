@@ -12,8 +12,33 @@ global.shell = {
   showItemInFolder: (path) => console.log('📁 Mock show in folder:', path)
 };
 
+// Mock the electron module in the cache
+const Module = require('module');
+const originalRequire = Module.prototype.require;
+Module.prototype.require = function(id) {
+  if (id === 'electron') {
+    return {
+      app: global.app,
+      shell: global.shell
+    };
+  }
+  return originalRequire.apply(this, arguments);
+};
+
 // Simple test script for updater functionality
 const { UpdaterService } = require('./dist/main/services/updater.js');
+
+// Also update the User-Agent in the test
+const originalRequire2 = Module.prototype.require;
+Module.prototype.require = function(id) {
+  if (id === 'electron') {
+    return {
+      app: global.app,
+      shell: global.shell
+    };
+  }
+  return originalRequire.apply(this, arguments);
+};
 
 async function testUpdater() {
   console.log('🧪 Testing Auto-Updater...\n');

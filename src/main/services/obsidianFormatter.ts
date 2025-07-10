@@ -29,16 +29,16 @@ export class ObsidianFormatter {
       enableCodeBlocks: true,
       enableTables: true,
       calloutMapping: {
-        'info': 'ad-info',
-        'note': 'ad-note',
-        'example': 'ad-example',
-        'abstract': 'ad-abstract',
-        'warning': 'ad-warning',
-        'tip': 'ad-tip',
-        'important': 'ad-note',
-        'summary': 'ad-abstract',
-        'exercise': 'ad-example',
-        'task': 'ad-example'
+        'info': 'info',
+        'note': 'note',
+        'example': 'example',
+        'abstract': 'abstract',
+        'warning': 'warning',
+        'tip': 'tip',
+        'important': 'important',
+        'summary': 'summary',
+        'exercise': 'example',
+        'task': 'todo'
       },
       ...config
     };
@@ -309,9 +309,9 @@ export class ObsidianFormatter {
         if (content.trim().length === 0) return;
         
         const marker = `__OBSIDIAN_CALLOUT_${patternIndex}_${elementIndex}__`;
-        const calloutType = this.config.calloutMapping[type] || 'ad-note';
+        const calloutType = this.config.calloutMapping[type] || 'note';
         const calloutContent = this.turndownService.turndown(content);
-        const callout = `\n\`\`\`${calloutType}\n${type.charAt(0).toUpperCase() + type.slice(1)}\n\n${calloutContent}\n\`\`\`\n`;
+        const callout = `\n> [!${calloutType}]\n> ${calloutContent.replace(/\n/g, '\n> ')}\n`;
         
         calloutReplacements.push({ marker, callout });
         $(element).replaceWith(marker);
@@ -335,11 +335,11 @@ export class ObsidianFormatter {
   }
 
   private createCallout(section: ContentSection): string {
-    const calloutType = this.config.calloutMapping[section.type] || 'ad-note';
+    const calloutType = this.config.calloutMapping[section.type] || 'note';
     const content = this.turndownService.turndown(section.content);
     const title = section.title || section.type.charAt(0).toUpperCase() + section.type.slice(1);
     
-    return `\`\`\`${calloutType}\n${title}\n\n${content}\n\`\`\``;
+    return `> [!${calloutType}] ${title}\n> ${content.replace(/\n/g, '\n> ')}`;
   }
 
   private createCodeBlock(section: ContentSection): string {

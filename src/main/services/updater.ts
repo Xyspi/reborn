@@ -60,7 +60,7 @@ export interface UpdateProgress {
 
 export class UpdaterService extends EventEmitter {
   private readonly repoOwner = 'Xyspi';
-  private readonly repoName = 'htb-academy-scraper';
+  private readonly repoName = 'reborn';
   private readonly githubApiUrl = `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases`;
   
   private currentVersion: string;
@@ -90,6 +90,8 @@ export class UpdaterService extends EventEmitter {
 
     try {
       console.log('🔍 Checking for updates...');
+      console.log('📡 GitHub API URL:', this.githubApiUrl);
+      
       const response = await axios.get(this.githubApiUrl, {
         headers: {
           'Accept': 'application/vnd.github.v3+json',
@@ -139,14 +141,29 @@ export class UpdaterService extends EventEmitter {
 
     } catch (error) {
       console.error('❌ Error checking for updates:', error);
+      
+      let errorMessage = 'Unknown error';
+      
+      // Handle specific error cases
+      if ((error as any)?.response?.status === 404) {
+        errorMessage = 'Repository not found. The project may not be published yet or the repository name has changed.';
+      } else if ((error as any)?.response?.status === 403) {
+        errorMessage = 'API rate limit exceeded. Please try again later.';
+      } else if ((error as any)?.code === 'ENOTFOUND' || (error as any)?.code === 'ECONNREFUSED') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       this.emit('progress', {
         percent: 0,
         transferred: 0,
         total: 0,
         status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage
       } as UpdateProgress);
-      throw error;
+      
+      throw new Error(errorMessage);
     } finally {
       this.isChecking = false;
     }
