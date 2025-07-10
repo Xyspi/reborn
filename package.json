@@ -36,13 +36,16 @@
       "dist/**/*",
       "node_modules/**/*"
     ],
+    "publish": null,
     "win": {
       "target": "nsis",
       "sign": false,
-      "verifyUpdateCodeSignature": false
+      "verifyUpdateCodeSignature": false,
+      "publish": null
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "publish": null
     }
   },
   "devDependencies": {
