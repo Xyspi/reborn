@@ -60,11 +60,13 @@
       "verifyUpdateCodeSignature": false,
       "publish": null,
       "certificateFile": null,
-      "certificatePassword": null
+      "certificatePassword": null,
+      "artifactName": "Reborn.exe"
     },
     "linux": {
       "target": "AppImage",
-      "publish": null
+      "publish": null,
+      "artifactName": "Reborn.AppImage"
     }
   },
   "devDependencies": {
