@@ -84,6 +84,8 @@ jobs:
     - name: Create Release with gh CLI
       env:
         TAG_NAME: ${{ github.ref_name }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release create ${TAG_NAME} \
           --title "HTB Academy Scraper ${TAG_NAME}" \
@@ -107,7 +109,4 @@ jobs:
           "windows-build/HTB Academy Scraper Setup ${VERSION}.exe" \
           "linux-build/HTB Academy Scraper-${VERSION}.AppImage" \
           --clobber
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
