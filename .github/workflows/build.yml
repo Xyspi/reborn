@@ -81,21 +81,27 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       
-    - name: Create Release with gh CLI
+    - name: Create Release Notes
       run: |
-        gh release create ${{ github.ref_name }} \
-          --title "HTB Academy Scraper ${{ github.ref_name }}" \
-          --notes "🎉 **Nouvelle release automatique !**
+        cat > release-notes.md << 'EOF'
+        🎉 **Nouvelle release automatique !**
         
         ✅ **Windows** : .exe inclus
         ✅ **Linux** : .AppImage inclus
         
         **Commit :** ${{ github.sha }}
-        **Message :** ${{ github.event.head_commit.message }}
+        **Message :** $(echo "${{ github.event.head_commit.message }}" | head -1)
         
         **Installation :**
         - Windows : Téléchargez le .exe
-        - Linux : Téléchargez le .AppImage et rendez-le exécutable" \
+        - Linux : Téléchargez le .AppImage et rendez-le exécutable
+        EOF
+
+    - name: Create Release with gh CLI
+      run: |
+        gh release create ${{ github.ref_name }} \
+          --title "Reborn ${{ github.ref_name }}" \
+          --notes-file release-notes.md \
           --latest
         
         gh release upload ${{ github.ref_name }} \

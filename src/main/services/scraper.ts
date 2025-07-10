@@ -5,6 +5,7 @@ const TurndownService = require('turndown');
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { ObsidianFormatter, ObsidianFormatterConfig } from './obsidianFormatter';
+import { logger } from './logger';
 
 export interface ScrapingConfig {
   cookies: string;
@@ -30,6 +31,11 @@ export interface ScrapingProgress {
   error?: string;
 }
 
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
 export class ScraperService extends EventEmitter {
   private client!: AxiosInstance;
   private turndownService!: any;
@@ -39,6 +45,8 @@ export class ScraperService extends EventEmitter {
   private currentConfig: ScrapingConfig | null = null;
   private downloadQueue: string[] = [];
   private processedUrls: Set<string> = new Set();
+  private consecutiveErrors = 0;
+  private readonly maxConsecutiveErrors = 3;
 
   constructor() {
     super();
@@ -184,7 +192,14 @@ export class ScraperService extends EventEmitter {
   }
 
   private sanitizeFilename(filename: string): string {
-    return filename.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    return filename
+      .replace(/[<>:"/\\|?*]/g, '_') // Remove dangerous characters
+      .replace(/\.\./g, '_') // Prevent directory traversal
+      .replace(/^\./, '_') // Prevent hidden files
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/_{2,}/g, '_') // Replace multiple underscores with single
+      .substring(0, 255) // Limit length to prevent filesystem issues
+      .toLowerCase();
   }
 
   private async saveContent(title: string, content: string, outputDir: string, formats: string[]) {
@@ -252,17 +267,100 @@ export class ScraperService extends EventEmitter {
     }
   }
 
+  /**
+   * Validate configuration before starting scraping
+   */
+  private validateConfig(config: ScrapingConfig): ValidationResult {
+    // Validate cookies
+    const cookieValidation = this.validateCookies(config.cookies);
+    if (!cookieValidation.valid) {
+      return cookieValidation;
+    }
+
+    // Validate URLs
+    const urlValidation = this.validateUrls(config.urls);
+    if (!urlValidation.valid) {
+      return urlValidation;
+    }
+
+    // Validate output directory
+    const outputValidation = this.validateOutputDir(config.outputDir);
+    if (!outputValidation.valid) {
+      return outputValidation;
+    }
+
+    return { valid: true };
+  }
+
+  private validateCookies(cookies: string): ValidationResult {
+    if (!cookies || cookies.trim().length === 0) {
+      return { valid: false, error: 'Cookies are required' };
+    }
+
+    // Basic cookie format validation
+    const cookieRegex = /^[a-zA-Z0-9_-]+=[a-zA-Z0-9_\-\.%]+(?:; [a-zA-Z0-9_-]+=[a-zA-Z0-9_\-\.%]+)*$/;
+    if (!cookieRegex.test(cookies.trim())) {
+      return { valid: false, error: 'Invalid cookie format' };
+    }
+
+    // Check for HTB Academy specific cookies
+    if (!cookies.includes('htb_academy_session')) {
+      return { valid: false, error: 'HTB Academy session cookie is required' };
+    }
+
+    return { valid: true };
+  }
+
+  private validateUrls(urls: string[]): ValidationResult {
+    if (!urls || urls.length === 0) {
+      return { valid: false, error: 'At least one URL is required' };
+    }
+
+    for (const url of urls) {
+      try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.hostname !== 'academy.hackthebox.com') {
+          return { valid: false, error: `Invalid URL: ${url}. Only HTB Academy URLs are allowed.` };
+        }
+      } catch {
+        return { valid: false, error: `Invalid URL format: ${url}` };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  private validateOutputDir(outputDir: string): ValidationResult {
+    if (!outputDir || outputDir.trim().length === 0) {
+      return { valid: false, error: 'Output directory is required' };
+    }
+
+    // Check for directory traversal attempts
+    if (outputDir.includes('..')) {
+      return { valid: false, error: 'Invalid output directory path' };
+    }
+
+    return { valid: true };
+  }
+
   async startScraping(config: ScrapingConfig): Promise<void> {
     if (this.isRunning) {
       throw new Error('Scraping is already running');
+    }
+
+    // Validate configuration
+    const validation = this.validateConfig(config);
+    if (!validation.valid) {
+      throw new Error(`Configuration validation failed: ${validation.error}`);
     }
 
     this.currentConfig = config;
     this.isRunning = true;
     this.isPaused = false;
     this.processedUrls.clear();
+    this.consecutiveErrors = 0;
 
-    // Set up cookies
+    // Set up cookies (already validated)
     const cookies = this.parseCookies(config.cookies);
     this.client.defaults.headers.Cookie = config.cookies;
 
@@ -330,6 +428,7 @@ export class ScraperService extends EventEmitter {
         } as ScrapingProgress);
 
         this.processedUrls.add(url);
+        this.consecutiveErrors = 0; // Reset consecutive errors on success
 
         // Rate limiting
         if (this.currentConfig!.rateLimit > 0) {
@@ -337,14 +436,30 @@ export class ScraperService extends EventEmitter {
         }
 
       } catch (error) {
+        this.consecutiveErrors++;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        logger.error(`Error processing URL ${url}`, 'Scraper', error instanceof Error ? error : new Error(errorMessage), { url, current, total });
+        
         this.emit('progress', {
           current,
           total,
           url,
           filename: '',
           status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
         } as ScrapingProgress);
+
+        // Stop scraping if too many consecutive errors
+        if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+          logger.error(`Stopping scraper after ${this.maxConsecutiveErrors} consecutive errors`, 'Scraper', undefined, { 
+            consecutiveErrors: this.consecutiveErrors,
+            maxConsecutiveErrors: this.maxConsecutiveErrors
+          });
+          this.isRunning = false;
+          this.emit('error', new Error(`Too many consecutive errors (${this.maxConsecutiveErrors}), stopping scraper`));
+          break;
+        }
       }
     }
 
@@ -375,5 +490,30 @@ export class ScraperService extends EventEmitter {
       processed: this.processedUrls.size,
       total: this.downloadQueue.length,
     };
+  }
+
+  /**
+   * Clean up resources to prevent memory leaks
+   */
+  cleanup(): void {
+    logger.info('Cleaning up ScraperService resources', 'Scraper');
+    
+    // Remove all event listeners
+    this.removeAllListeners();
+    
+    // Clear arrays and sets
+    this.downloadQueue.length = 0;
+    this.processedUrls.clear();
+    
+    // Reset state
+    this.isRunning = false;
+    this.isPaused = false;
+    this.currentConfig = null;
+    this.consecutiveErrors = 0;
+    
+    // Clear axios instance headers
+    if (this.client?.defaults?.headers) {
+      this.client.defaults.headers.Cookie = '';
+    }
   }
 }

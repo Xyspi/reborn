@@ -29,6 +29,10 @@ const createWindow = () => {
       nodeIntegration: false,
       contextIsolation: true,
       preload: preloadPath,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+      sandbox: false // Required for preload script
     },
   });
 
@@ -48,8 +52,10 @@ const createWindow = () => {
       console.error('❌ Failed to load index.html:', error);
     });
     
-    // Always open DevTools in production for debugging
-    mainWindow.webContents.openDevTools();
+    // Only open DevTools in production if explicitly requested
+    if (process.env.DEBUG_PROD === '1') {
+      mainWindow.webContents.openDevTools();
+    }
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

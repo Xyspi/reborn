@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createWriteStream } from 'fs';
 import { pipeline } from 'stream/promises';
+import { createHash } from 'crypto';
 
 // Safe electron imports for testing
 let app: any;
@@ -36,6 +37,7 @@ export interface GitHubRelease {
     download_url: string;
     size: number;
     browser_download_url: string;
+    content_type?: string;
   }>;
   prerelease: boolean;
   draft: boolean;
@@ -177,6 +179,11 @@ export class UpdaterService extends EventEmitter {
       throw new Error('Download already in progress');
     }
 
+    // Validate download URL
+    if (!this.validateDownloadUrl(downloadUrl)) {
+      throw new Error('Invalid or unsafe download URL');
+    }
+
     this.isDownloading = true;
 
     try {
@@ -220,6 +227,22 @@ export class UpdaterService extends EventEmitter {
       await pipeline(response.data, writeStream);
 
       console.log('✅ Download completed');
+
+      // Validate downloaded file
+      const isValidFile = await this.validateDownloadedFile(filePath, totalSize);
+      if (!isValidFile) {
+        throw new Error('Downloaded file validation failed');
+      }
+
+      console.log('✅ File validation passed');
+
+      // Calculate file hash for logging
+      try {
+        const fileHash = await this.calculateFileHash(filePath);
+        console.log('📋 File SHA256:', fileHash);
+      } catch (error) {
+        console.warn('⚠️ Could not calculate file hash:', error);
+      }
 
       // Install update
       this.emit('progress', {
@@ -350,6 +373,100 @@ export class UpdaterService extends EventEmitter {
    */
   isDownloadingUpdate(): boolean {
     return this.isDownloading;
+  }
+
+  /**
+   * Validate download URL for security
+   */
+  private validateDownloadUrl(url: string): boolean {
+    try {
+      const parsedUrl = new URL(url);
+      
+      // Only allow GitHub releases
+      if (parsedUrl.hostname !== 'github.com' && parsedUrl.hostname !== 'objects.githubusercontent.com') {
+        console.error('Invalid download host:', parsedUrl.hostname);
+        return false;
+      }
+      
+      // Check if URL is from the correct repository
+      if (parsedUrl.pathname.includes(this.repoOwner) && parsedUrl.pathname.includes(this.repoName)) {
+        return true;
+      }
+      
+      console.error('Download URL not from expected repository');
+      return false;
+    } catch (error) {
+      console.error('Invalid download URL:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Validate downloaded file
+   */
+  private async validateDownloadedFile(filePath: string, expectedSize?: number): Promise<boolean> {
+    try {
+      const stats = await fs.stat(filePath);
+      
+      // Check file size if provided
+      if (expectedSize && stats.size !== expectedSize) {
+        console.error(`File size mismatch. Expected: ${expectedSize}, Got: ${stats.size}`);
+        return false;
+      }
+      
+      // Check file type based on extension
+      const platform = process.platform;
+      const fileName = filePath.toLowerCase();
+      
+      if (platform === 'win32' && !fileName.endsWith('.exe')) {
+        console.error('Invalid file type for Windows platform');
+        return false;
+      }
+      
+      if (platform === 'linux' && !fileName.endsWith('.appimage')) {
+        console.error('Invalid file type for Linux platform');
+        return false;
+      }
+      
+      // Basic file integrity check - ensure it's not empty
+      if (stats.size === 0) {
+        console.error('Downloaded file is empty');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating downloaded file:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Calculate file hash for integrity verification
+   */
+  private async calculateFileHash(filePath: string): Promise<string> {
+    try {
+      const fileBuffer = await fs.readFile(filePath);
+      const hash = createHash('sha256').update(fileBuffer).digest('hex');
+      return hash;
+    } catch (error) {
+      console.error('Error calculating file hash:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clean up resources to prevent memory leaks
+   */
+  cleanup(): void {
+    console.log('Cleaning up UpdaterService resources...');
+    
+    // Remove all event listeners
+    this.removeAllListeners();
+    
+    // Reset state
+    this.isChecking = false;
+    this.isDownloading = false;
   }
 }
 
