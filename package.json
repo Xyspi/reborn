@@ -16,7 +16,11 @@
     "build:linux": "electron-builder --linux",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "release": "node scripts/release.js",
+    "release:patch": "node scripts/quick-release.js",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major"
   },
   "keywords": [
     "htb",
