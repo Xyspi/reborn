@@ -17,10 +17,11 @@
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write .",
-    "release": "node scripts/release.js",
+    "release": "node scripts/merge-to-main.js",
     "release:patch": "node scripts/quick-release.js",
     "release:minor": "node scripts/release.js minor",
-    "release:major": "node scripts/release.js major"
+    "release:major": "node scripts/release.js major",
+    "merge-to-main": "node scripts/merge-to-main.js"
   },
   "keywords": [
     "htb",
