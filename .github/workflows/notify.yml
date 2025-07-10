@@ -1,0 +1,56 @@
+name: 📱 Notifications
+
+on:
+  workflow_run:
+    workflows: ["🚀 Build and Release"]
+    types:
+      - completed
+
+jobs:
+  notify-signal:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Set status
+      id: status
+      run: |
+        if [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+          echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT
+          echo "emoji=🎉" >> $GITHUB_OUTPUT
+        else
+          echo "status=❌ FAILED" >> $GITHUB_OUTPUT
+          echo "emoji=💥" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Send Signal notification via Signal-CLI REST API
+      run: |
+        # Alternative simple method using a webhook or Signal bot
+        MESSAGE="${{ steps.status.outputs.emoji }} Build ${{ steps.status.outputs.status }}
+        
+        📋 Project: HTB Academy Scraper
+        🌿 Branch: ${{ github.event.workflow_run.head_branch }}
+        📝 Commit: ${{ github.event.workflow_run.head_sha }}
+        
+        🔗 View: ${{ github.event.workflow_run.html_url }}"
+        
+        # Replace with your Signal notification method
+        echo "Notification: $MESSAGE"
+        
+        # Option 1: Signal-CLI REST API (if you have one)
+        # curl -X POST "YOUR_SIGNAL_API_URL" \
+        #   -H "Content-Type: application/json" \
+        #   -d "{\"number\": \"${{ secrets.SIGNAL_PHONE }}\", \"message\": \"$MESSAGE\"}"
+        
+        # Option 2: Telegram as alternative (easier setup)
+        if [ ! -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\", \"text\": \"$MESSAGE\"}"
+        fi
+        
+        # Option 3: Discord webhook (also easy)
+        if [ ! -z "${{ secrets.DISCORD_WEBHOOK }}" ]; then
+          curl -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"$MESSAGE\"}"
+        fi

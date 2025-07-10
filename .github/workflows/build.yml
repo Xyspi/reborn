@@ -1,4 +1,4 @@
-name: Build and Release
+name: 🚀 Build and Release
 
 on:
   push:
@@ -66,6 +66,34 @@ jobs:
           release/linux-unpacked/
           
 
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Send Signal notification on success
+      if: needs.build.result == 'success'
+      run: |
+        curl -X POST "https://signal-api.example.com/v1/send" \
+          -H "Authorization: Bearer ${{ secrets.SIGNAL_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "number": "${{ secrets.SIGNAL_PHONE }}",
+            "message": "✅ Build SUCCESS for ${{ github.ref_name }}\n\n🔨 Commit: ${{ github.sha }}\n📝 Message: ${{ github.event.head_commit.message }}\n\n🎉 Ready to download!"
+          }'
+    
+    - name: Send Signal notification on failure
+      if: needs.build.result == 'failure'
+      run: |
+        curl -X POST "https://signal-api.example.com/v1/send" \
+          -H "Authorization: Bearer ${{ secrets.SIGNAL_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "number": "${{ secrets.SIGNAL_PHONE }}",
+            "message": "❌ Build FAILED for ${{ github.ref_name }}\n\n🔨 Commit: ${{ github.sha }}\n📝 Message: ${{ github.event.head_commit.message }}\n\n🛠️ Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }'
+
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -78,15 +106,38 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          windows-build/*.exe
-          linux-build/*.AppImage
-        generate_release_notes: true
-        draft: false
-        prerelease: false
+    - name: Create Release with gh CLI
+      run: |
+        gh release create ${{ github.ref_name }} \
+          --title "HTB Academy Scraper ${{ github.ref_name }}" \
+          --notes "🎉 **Nouvelle release automatique !**
+        
+        ✅ **Windows** : .exe inclus
+        ✅ **Linux** : .AppImage inclus
+        
+        **Commit :** ${{ github.sha }}
+        **Message :** ${{ github.event.head_commit.message }}
+        
+        **Installation :**
+        - Windows : Téléchargez le .exe
+        - Linux : Téléchargez le .AppImage et rendez-le exécutable" \
+          --latest
+        
+        gh release upload ${{ github.ref_name }} \
+          windows-build/*.exe \
+          linux-build/*.AppImage \
+          --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Send Signal release notification
+      if: success()
+      run: |
+        curl -X POST "https://signal-api.example.com/v1/send" \
+          -H "Authorization: Bearer ${{ secrets.SIGNAL_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "number": "${{ secrets.SIGNAL_PHONE }}",
+            "message": "🚀 RELEASE PUBLISHED!\n\n📦 Version: ${{ github.ref_name }}\n🔗 Download: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}\n\n✅ Windows & Linux builds ready!"
+          }'

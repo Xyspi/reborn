@@ -8,6 +8,8 @@ yarn-error.log*
 dist/
 release/
 *.tsbuildinfo
+linux-build/
+windows-build/
 
 # Development
 .env

@@ -30,7 +30,9 @@ const createWindow = () => {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    // In production, load from the built dist/renderer directory
+    const indexPath = join(__dirname, '../renderer/index.html');
+    mainWindow.loadFile(indexPath);
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

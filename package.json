@@ -34,7 +34,16 @@
     },
     "files": [
       "dist/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/**/test/**",
+      "!node_modules/**/tests/**"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/renderer",
+        "to": "renderer",
+        "filter": ["**/*"]
+      }
     ],
     "publish": null,
     "win": {
