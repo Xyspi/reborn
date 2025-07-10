@@ -342,9 +342,10 @@ export class UpdaterService extends EventEmitter {
     for (const asset of assets) {
       const name = asset.name.toLowerCase();
       
-      if (platform === 'win32' && name.includes('.exe')) {
+      // Look for exact names first, then fallback to extensions
+      if (platform === 'win32' && (name === 'reborn.exe' || name.includes('.exe'))) {
         return asset;
-      } else if (platform === 'linux' && name.includes('.appimage')) {
+      } else if (platform === 'linux' && (name === 'reborn.appimage' || name.includes('.appimage'))) {
         return asset;
       } else if (platform === 'darwin' && (name.includes('.dmg') || name.includes('.zip'))) {
         return asset;

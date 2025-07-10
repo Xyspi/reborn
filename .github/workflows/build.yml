@@ -125,8 +125,8 @@ jobs:
           --latest || echo "Release already exists"
         
         gh release upload $TAG_NAME \
-          windows-build/*.exe \
-          linux-build/*.AppImage \
+          windows-build/Reborn.exe \
+          linux-build/Reborn.AppImage \
           --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
