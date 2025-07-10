@@ -37,7 +37,7 @@ jobs:
         username: ${{ secrets.EMAIL_USERNAME }}
         password: ${{ secrets.EMAIL_PASSWORD }}
         subject: "🎉 Build Success - HTB Academy Scraper ${{ github.event.workflow_run.head_branch }}"
-        to: ${{ secrets.EMAIL_TO }}
+        to: ${{ secrets.EMAIL_TO || secrets.EMAIL_USERNAME }}
         from: "GitHub Actions <${{ secrets.EMAIL_USERNAME }}>"
         html_body: |
           <html>
@@ -86,7 +86,7 @@ jobs:
         username: ${{ secrets.EMAIL_USERNAME }}
         password: ${{ secrets.EMAIL_PASSWORD }}
         subject: "💥 Build Failed - HTB Academy Scraper ${{ github.event.workflow_run.head_branch }}"
-        to: ${{ secrets.EMAIL_TO }}
+        to: ${{ secrets.EMAIL_TO || secrets.EMAIL_USERNAME }}
         from: "GitHub Actions <${{ secrets.EMAIL_USERNAME }}>"
         html_body: |
           <html>
