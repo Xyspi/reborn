@@ -11,7 +11,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         
     runs-on: ${{ matrix.os }}
     
@@ -42,10 +42,6 @@ jobs:
       if: matrix.os == 'ubuntu-latest'  
       run: npm run build:linux
       
-    - name: Build Electron (macOS)
-      if: matrix.os == 'macos-latest'
-      run: npm run build:mac
-      
     - name: Upload Windows artifacts
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
@@ -64,14 +60,6 @@ jobs:
           release/*.AppImage
           release/linux-unpacked/
           
-    - name: Upload macOS artifacts
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-build
-        path: |
-          release/*.dmg
-          release/mac/
 
   release:
     needs: build
@@ -91,9 +79,9 @@ jobs:
         files: |
           windows-build/*.exe
           linux-build/*.AppImage
-          macos-build/*.dmg
         generate_release_notes: true
         draft: false
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
