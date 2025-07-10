@@ -3,6 +3,7 @@ import { join } from 'path';
 import Store from 'electron-store';
 import { ScraperService } from './services/scraper';
 import { FileService } from './services/file';
+import { UpdaterService } from './services/updater';
 
 // Disable GPU for Windows compatibility
 app.disableHardwareAcceleration();
@@ -11,6 +12,7 @@ const store = new Store();
 let mainWindow: BrowserWindow | null = null;
 let scraperService: ScraperService;
 let fileService: FileService;
+let updaterService: UpdaterService;
 
 const createWindow = () => {
   const preloadPath = join(__dirname, 'preload.js');
@@ -85,6 +87,7 @@ app.whenReady().then(() => {
   try {
     scraperService = new ScraperService();
     fileService = new FileService();
+    updaterService = new UpdaterService();
     
     setupIpcHandlers();
   } catch (error) {
@@ -154,5 +157,27 @@ const setupIpcHandlers = () => {
 
   scraperService.on('error', (error) => {
     mainWindow?.webContents.send('scraper:error', error);
+  });
+
+  // Updater operations
+  ipcMain.handle('updater:checkForUpdates', async () => {
+    return updaterService.checkForUpdates();
+  });
+
+  ipcMain.handle('updater:downloadAndInstall', async (_, downloadUrl: string) => {
+    return updaterService.downloadAndInstall(downloadUrl);
+  });
+
+  ipcMain.handle('updater:getCurrentVersion', () => {
+    return updaterService.getCurrentVersion();
+  });
+
+  // Updater events
+  updaterService.on('progress', (data) => {
+    mainWindow?.webContents.send('updater:progress', data);
+  });
+
+  updaterService.on('update-available', (data) => {
+    mainWindow?.webContents.send('updater:update-available', data);
   });
 };

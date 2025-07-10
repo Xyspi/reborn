@@ -405,3 +405,272 @@ textarea.form-control {
 .checkbox-group .checkbox-label:last-child {
   margin-bottom: 0;
 }
+
+/* Update Checker styles */
+.update-checker {
+  margin-top: 1rem;
+}
+
+.update-section {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.update-section h3 {
+  color: #00ff88;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.current-version {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.current-version .label {
+  color: #888;
+  font-size: 0.875rem;
+}
+
+.current-version .version {
+  color: #fff;
+  font-weight: 500;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #2a2a2a;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+}
+
+.update-progress {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progress-info.success {
+  color: #00ff88;
+}
+
+.progress-info.error {
+  color: #ff6b6b;
+}
+
+.progress-bar {
+  position: relative;
+  background: #333;
+  border-radius: 4px;
+  height: 20px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(135deg, #00ff88, #00cc66);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #000;
+  z-index: 1;
+}
+
+.update-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1a1a;
+  border: 2px solid #00ff88;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 20px 60px rgba(0, 255, 136, 0.3);
+}
+
+.update-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.update-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #333;
+  background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+}
+
+.update-header h4 {
+  margin: 0;
+  color: #00ff88;
+  font-size: 1.25rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #333;
+  color: #fff;
+}
+
+.update-info {
+  padding: 1.5rem;
+}
+
+.version-comparison {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.version-comparison .current {
+  background: #333;
+  color: #888;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+}
+
+.version-comparison .arrow {
+  color: #00ff88;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.version-comparison .latest {
+  background: linear-gradient(135deg, #00ff88, #00cc66);
+  color: #000;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.download-size {
+  text-align: center;
+  color: #888;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.release-notes {
+  margin-bottom: 1.5rem;
+}
+
+.release-notes h5 {
+  color: #00ff88;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.notes-content {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.notes-content h3 {
+  color: #00ff88;
+  font-size: 1rem;
+  margin: 0.75rem 0 0.5rem 0;
+}
+
+.notes-content h4 {
+  color: #ccc;
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0.25rem 0;
+}
+
+.notes-content p {
+  margin: 0.5rem 0;
+  color: #ccc;
+}
+
+.notes-content ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.notes-content li {
+  color: #ccc;
+  margin: 0.25rem 0;
+}
+
+.update-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.update-actions .btn {
+  min-width: 120px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .version-info {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .update-dialog {
+    width: 95%;
+    margin: 1rem;
+    transform: translate(-50%, -50%);
+  }
+  
+  .update-actions {
+    flex-direction: column;
+  }
+}

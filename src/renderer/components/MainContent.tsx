@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useAppStore } from '../store/appStore';
+import { UpdateChecker } from './UpdateChecker';
 
 export function MainContent() {
   const {
@@ -385,6 +386,9 @@ export function MainContent() {
           )}
         </div>
       </div>
+
+      {/* Update Checker */}
+      <UpdateChecker />
     </div>
   );
 }

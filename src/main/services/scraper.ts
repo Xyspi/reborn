@@ -169,10 +169,12 @@ export class ScraperService extends EventEmitter {
     // Choose formatting based on configuration
     let markdownContent: string;
     if (this.currentConfig?.obsidianFormat) {
+      
       // Update ObsidianFormatter configuration if provided
       if (this.currentConfig.obsidianConfig) {
         this.obsidianFormatter = new ObsidianFormatter(this.currentConfig.obsidianConfig);
       }
+      
       markdownContent = this.obsidianFormatter.formatAsObsidian(htmlContent);
     } else {
       markdownContent = this.turndownService.turndown(htmlContent);

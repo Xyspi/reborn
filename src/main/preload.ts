@@ -30,6 +30,19 @@ const api = {
       ipcRenderer.on('scraper:error', (_, error) => callback(error));
     },
   },
+
+  // Updater operations
+  updater: {
+    checkForUpdates: () => ipcRenderer.invoke('updater:checkForUpdates'),
+    downloadAndInstall: (downloadUrl: string) => ipcRenderer.invoke('updater:downloadAndInstall', downloadUrl),
+    getCurrentVersion: () => ipcRenderer.invoke('updater:getCurrentVersion'),
+    onProgress: (callback: (data: any) => void) => {
+      ipcRenderer.on('updater:progress', (_, data) => callback(data));
+    },
+    onUpdateAvailable: (callback: (data: any) => void) => {
+      ipcRenderer.on('updater:update-available', (_, data) => callback(data));
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

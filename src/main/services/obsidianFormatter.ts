@@ -181,6 +181,10 @@ export class ObsidianFormatter {
     const sections: ContentSection[] = [];
     const $ = cheerio.load(html);
     
+    // Create a copy of the DOM to track what we've processed
+    const $copy = cheerio.load(html);
+    const processedElements = new Set();
+    
     // HTB Academy specific patterns - enhanced detection
     const patterns = [
       // HTB Academy specific classes and patterns
@@ -207,10 +211,18 @@ export class ObsidianFormatter {
       { keywords: ['info:', 'information:', 'details:'], type: 'info' as const }
     ];
     
+    // First, extract special sections and filter out empty ones
     patterns.forEach(({ selector, type }) => {
       const elements = $(selector);
+      
       elements.each((_, element) => {
         const content = $(element).html() || '';
+        
+        // Skip empty content
+        if (content.trim().length === 0) {
+          return;
+        }
+        
         const language = type === 'code' ? this.detectLanguage($(element).attr('class') || '', $(element).text()) : undefined;
         
         sections.push({
@@ -219,46 +231,48 @@ export class ObsidianFormatter {
           language,
           title: $(element).attr('title') || $(element).attr('data-title') || undefined
         });
+        
+        // Remove from copy for remaining content detection
+        $copy(element).remove();
       });
     });
     
-    // Enhanced text-based detection for remaining content
+    // Now process remaining content as general text
+    const remainingHtml = $copy.html() || '';
+    
+    if (remainingHtml.trim().length > 0) {
+      // Clean up the remaining HTML (remove empty containers)
+      const $remaining = cheerio.load(remainingHtml);
+      $remaining('div:empty, span:empty, p:empty').remove();
+      const cleanedHtml = $remaining.html() || '';
+      
+      if (cleanedHtml.trim().length > 0) {
+        
+        // Detect type of remaining content
+        const textContent = $remaining.text().toLowerCase();
+        let detectedType: ContentSection['type'] = 'text';
+        
+        // Check for text patterns in remaining content
+        for (const { keywords, type } of textPatterns) {
+          if (keywords.some(keyword => textContent.includes(keyword.toLowerCase()))) {
+            detectedType = type;
+            break;
+          }
+        }
+        
+        // Add the remaining content as the first section (main content)
+        sections.unshift({
+          type: detectedType,
+          content: cleanedHtml
+        });
+      }
+    }
+    
+    // Fallback for completely empty result
     if (sections.length === 0) {
-      const textContent = $.text().toLowerCase();
-      const htmlContent = $.html() || '';
-      
-      let detectedType: ContentSection['type'] = 'text';
-      
-      // Check for text patterns
-      for (const { keywords, type } of textPatterns) {
-        if (keywords.some(keyword => textContent.includes(keyword.toLowerCase()))) {
-          detectedType = type;
-          break;
-        }
-      }
-      
-      // Check for structural patterns
-      if (detectedType === 'text') {
-        // Detect code blocks by content
-        if (htmlContent.includes('<pre>') || htmlContent.includes('<code>') || 
-            textContent.includes('function ') || textContent.includes('import ') ||
-            textContent.includes('#!/bin/') || textContent.includes('SELECT ')) {
-          detectedType = 'code';
-        }
-        // Detect tables
-        else if (htmlContent.includes('<table>') || htmlContent.includes('<th>') || htmlContent.includes('<td>')) {
-          detectedType = 'table';
-        }
-        // Detect lists that might be examples
-        else if ((htmlContent.includes('<ol>') || htmlContent.includes('<ul>')) && 
-                 (textContent.includes('step') || textContent.includes('first') || textContent.includes('next'))) {
-          detectedType = 'example';
-        }
-      }
-      
       sections.push({
-        type: detectedType,
-        content: htmlContent
+        type: 'text',
+        content: html
       });
     }
     
@@ -266,34 +280,56 @@ export class ObsidianFormatter {
   }
 
   public formatAsObsidian(html: string): string {
+    
     if (!this.config.enableCallouts) {
-      return this.turndownService.turndown(html);
+      const result = this.turndownService.turndown(html);
+      return result;
     }
     
-    const sections = this.detectContentType(html);
-    let markdown = '';
+    // New approach: Transform HTML in-place by replacing special elements with callouts
+    let transformedHtml = html;
+    const $ = cheerio.load(html);
     
-    sections.forEach(section => {
-      switch (section.type) {
-        case 'abstract':
-        case 'note':
-        case 'example':
-        case 'info':
-        case 'warning':
-        case 'tip':
-          markdown += this.createCallout(section);
-          break;
-        case 'code':
-          markdown += this.createCodeBlock(section);
-          break;
-        case 'table':
-          markdown += this.turndownService.turndown(section.content);
-          break;
-        default:
-          markdown += this.turndownService.turndown(section.content);
-      }
-      markdown += '\n\n';
+    // Transform special sections to temporary markers
+    const patterns = [
+      { selector: '.alert-info, .info-box, .note-info, .callout-info, [class*="info"]', type: 'info' as const },
+      { selector: '.alert-warning, .warning-box, .note-warning, .callout-warning, [class*="warning"]', type: 'warning' as const },
+      { selector: '.alert-example, .example-box, .exercise, .callout-example, [class*="example"], [class*="exercise"]', type: 'example' as const },
+      { selector: '.abstract, .summary, .overview, .callout-abstract, [class*="abstract"], [class*="summary"]', type: 'abstract' as const },
+      { selector: '.note, .important, .tip, .callout-note, [class*="important"], [class*="note"]', type: 'note' as const }
+    ];
+    
+    const calloutReplacements: { marker: string, callout: string }[] = [];
+    
+    patterns.forEach(({ selector, type }, patternIndex) => {
+      const elements = $(selector);
+      
+      elements.each((elementIndex, element) => {
+        const content = $(element).html() || '';
+        if (content.trim().length === 0) return;
+        
+        const marker = `__OBSIDIAN_CALLOUT_${patternIndex}_${elementIndex}__`;
+        const calloutType = this.config.calloutMapping[type] || 'ad-note';
+        const calloutContent = this.turndownService.turndown(content);
+        const callout = `\n\`\`\`${calloutType}\n${type.charAt(0).toUpperCase() + type.slice(1)}\n\n${calloutContent}\n\`\`\`\n`;
+        
+        calloutReplacements.push({ marker, callout });
+        $(element).replaceWith(marker);
+        
+      });
     });
+    
+    // Convert the transformed HTML to markdown
+    transformedHtml = $.html() || '';
+    let markdown = this.turndownService.turndown(transformedHtml);
+    
+    // Replace markers with actual callouts (handle escaped underscores)
+    calloutReplacements.forEach(({ marker, callout }) => {
+      const escapedMarker = marker.replace(/_/g, '\\_');
+      markdown = markdown.replace(new RegExp(escapedMarker.replace(/\\/g, '\\\\'), 'g'), callout);
+      markdown = markdown.replace(new RegExp(marker, 'g'), callout);
+    });
+    
     
     return markdown.trim();
   }
