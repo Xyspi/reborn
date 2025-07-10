@@ -1,6 +1,6 @@
 {
   "name": "htb-academy-scraper",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "HTB Academy Course Scraper with Modern GUI",
   "main": "dist/main/main.js",
   "scripts": {
@@ -47,7 +47,9 @@
       {
         "from": "dist/renderer",
         "to": "renderer",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "publish": null,
