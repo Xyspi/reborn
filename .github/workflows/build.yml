@@ -82,9 +82,11 @@ jobs:
       uses: actions/download-artifact@v4
       
     - name: Create Release with gh CLI
+      env:
+        TAG_NAME: ${{ github.ref_name }}
       run: |
-        gh release create ${{ github.ref_name }} \
-          --title "HTB Academy Scraper ${{ github.ref_name }}" \
+        gh release create ${TAG_NAME} \
+          --title "HTB Academy Scraper ${TAG_NAME}" \
           --notes "🎉 **Nouvelle release automatique !**
         
         ✅ **Windows** : .exe inclus
@@ -99,9 +101,9 @@ jobs:
           --latest
         
         # Extract version from tag (remove 'v' prefix)
-        VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+        VERSION=${TAG_NAME#v}
         
-        gh release upload ${{ github.ref_name }} \
+        gh release upload ${TAG_NAME} \
           "windows-build/HTB Academy Scraper Setup ${VERSION}.exe" \
           "linux-build/HTB Academy Scraper-${VERSION}.AppImage" \
           --clobber
