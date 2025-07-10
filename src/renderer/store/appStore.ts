@@ -11,6 +11,16 @@ export interface ScrapingConfig {
     content: string[];
     cleanup: string[];
   };
+  obsidianFormat?: boolean;
+  obsidianConfig?: {
+    enableCallouts: boolean;
+    enableWikilinks: boolean;
+    enableCodeBlocks: boolean;
+    enableTables: boolean;
+    calloutMapping?: {
+      [key: string]: string;
+    };
+  };
 }
 
 export interface ScrapingProgress {
@@ -63,6 +73,25 @@ export const useAppStore = create<AppState>()(
         rateLimit: 1.0,
         formats: ['markdown'],
         includeImages: false,
+        obsidianFormat: false,
+        obsidianConfig: {
+          enableCallouts: true,
+          enableWikilinks: true,
+          enableCodeBlocks: true,
+          enableTables: true,
+          calloutMapping: {
+            'info': 'ad-info',
+            'note': 'ad-note',
+            'example': 'ad-example',
+            'abstract': 'ad-abstract',
+            'warning': 'ad-warning',
+            'tip': 'ad-tip',
+            'important': 'ad-note',
+            'summary': 'ad-abstract',
+            'exercise': 'ad-example',
+            'task': 'ad-example'
+          }
+        }
       },
       
       progress: {

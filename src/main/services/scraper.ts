@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 const TurndownService = require('turndown');
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { ObsidianFormatter, ObsidianFormatterConfig } from './obsidianFormatter';
 
 export interface ScrapingConfig {
   cookies: string;
@@ -16,6 +17,8 @@ export interface ScrapingConfig {
     content: string[];
     cleanup: string[];
   };
+  obsidianFormat?: boolean;
+  obsidianConfig?: Partial<ObsidianFormatterConfig>;
 }
 
 export interface ScrapingProgress {
@@ -30,6 +33,7 @@ export interface ScrapingProgress {
 export class ScraperService extends EventEmitter {
   private client!: AxiosInstance;
   private turndownService!: any;
+  private obsidianFormatter!: ObsidianFormatter;
   private isRunning = false;
   private isPaused = false;
   private currentConfig: ScrapingConfig | null = null;
@@ -40,6 +44,7 @@ export class ScraperService extends EventEmitter {
     super();
     this.setupAxios();
     this.setupTurndown();
+    this.setupObsidianFormatter();
   }
 
   private setupAxios() {
@@ -75,6 +80,10 @@ export class ScraperService extends EventEmitter {
       filter: ['script', 'style', 'nav', 'header', 'footer'],
       replacement: () => '',
     });
+  }
+
+  private setupObsidianFormatter() {
+    this.obsidianFormatter = new ObsidianFormatter();
   }
 
   private parseCookies(cookieString: string): Record<string, string> {
@@ -156,7 +165,18 @@ export class ScraperService extends EventEmitter {
     });
 
     const htmlContent = contentElement.html() || '';
-    const markdownContent = this.turndownService.turndown(htmlContent);
+    
+    // Choose formatting based on configuration
+    let markdownContent: string;
+    if (this.currentConfig?.obsidianFormat) {
+      // Update ObsidianFormatter configuration if provided
+      if (this.currentConfig.obsidianConfig) {
+        this.obsidianFormatter = new ObsidianFormatter(this.currentConfig.obsidianConfig);
+      }
+      markdownContent = this.obsidianFormatter.formatAsObsidian(htmlContent);
+    } else {
+      markdownContent = this.turndownService.turndown(htmlContent);
+    }
 
     return { title, content: markdownContent };
   }
@@ -172,9 +192,31 @@ export class ScraperService extends EventEmitter {
       switch (format.toLowerCase()) {
         case 'markdown':
         case 'md':
+          let finalContent = content;
+          
+          // Apply Obsidian-specific formatting if enabled
+          if (this.currentConfig?.obsidianFormat) {
+            const formattedTitle = this.obsidianFormatter.formatTitle(title);
+            finalContent = this.obsidianFormatter.formatHeaders(content);
+            
+            // Add metadata if available
+            const metadata = {
+              tags: ['htb-academy', 'cybersecurity'],
+              created: new Date().toISOString(),
+              source: 'HTB Academy Scraper'
+            };
+            
+            finalContent = this.obsidianFormatter.addObsidianMetadata(
+              `${formattedTitle}\n\n${finalContent}`,
+              metadata
+            );
+          } else {
+            finalContent = `# ${title}\n\n${content}`;
+          }
+          
           await fs.writeFile(
             join(outputDir, `${filename}.md`),
-            `# ${title}\n\n${content}`,
+            finalContent,
             'utf8'
           );
           break;

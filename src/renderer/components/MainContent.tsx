@@ -269,6 +269,122 @@ export function MainContent() {
           </div>
         </div>
       </div>
+
+      {/* Obsidian Settings */}
+      <div className="section">
+        <h3>Obsidian Formatting</h3>
+        <div className="settings-grid">
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={config.obsidianFormat || false}
+                onChange={(e) => updateConfig({ obsidianFormat: e.target.checked })}
+              />
+              Enable Obsidian formatting
+            </label>
+            <p className="form-help">
+              Converts content to Obsidian-compatible markdown with callouts, wikilinks, and enhanced formatting.
+            </p>
+          </div>
+
+          {config.obsidianFormat && (
+            <>
+              <div className="form-group">
+                <label>Obsidian Features</label>
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={config.obsidianConfig?.enableCallouts !== false}
+                      onChange={(e) => updateConfig({ 
+                        obsidianConfig: { 
+                          ...config.obsidianConfig, 
+                          enableCallouts: e.target.checked 
+                        }
+                      })}
+                    />
+                    Callout blocks (ad-note, ad-example, etc.)
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={config.obsidianConfig?.enableWikilinks !== false}
+                      onChange={(e) => updateConfig({ 
+                        obsidianConfig: { 
+                          ...config.obsidianConfig, 
+                          enableWikilinks: e.target.checked 
+                        }
+                      })}
+                    />
+                    Wikilinks for images (![[image.png]])
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={config.obsidianConfig?.enableCodeBlocks !== false}
+                      onChange={(e) => updateConfig({ 
+                        obsidianConfig: { 
+                          ...config.obsidianConfig, 
+                          enableCodeBlocks: e.target.checked 
+                        }
+                      })}
+                    />
+                    Enhanced code blocks with syntax highlighting
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={config.obsidianConfig?.enableTables !== false}
+                      onChange={(e) => updateConfig({ 
+                        obsidianConfig: { 
+                          ...config.obsidianConfig, 
+                          enableTables: e.target.checked 
+                        }
+                      })}
+                    />
+                    Enhanced table formatting
+                  </label>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Callout Mapping</label>
+                <p className="form-help">
+                  HTB Academy content will be automatically mapped to these Obsidian callouts:
+                </p>
+                <div className="callout-mapping">
+                  <div className="mapping-item">
+                    <span className="mapping-source">Info boxes</span>
+                    <span className="mapping-arrow">→</span>
+                    <span className="mapping-target">ad-info</span>
+                  </div>
+                  <div className="mapping-item">
+                    <span className="mapping-source">Examples & Exercises</span>
+                    <span className="mapping-arrow">→</span>
+                    <span className="mapping-target">ad-example</span>
+                  </div>
+                  <div className="mapping-item">
+                    <span className="mapping-source">Important notes</span>
+                    <span className="mapping-arrow">→</span>
+                    <span className="mapping-target">ad-note</span>
+                  </div>
+                  <div className="mapping-item">
+                    <span className="mapping-source">Abstracts & Summaries</span>
+                    <span className="mapping-arrow">→</span>
+                    <span className="mapping-target">ad-abstract</span>
+                  </div>
+                  <div className="mapping-item">
+                    <span className="mapping-source">Warnings</span>
+                    <span className="mapping-arrow">→</span>
+                    <span className="mapping-target">ad-warning</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

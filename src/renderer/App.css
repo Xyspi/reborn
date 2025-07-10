@@ -346,3 +346,62 @@ textarea.form-control {
     grid-template-columns: 1fr;
   }
 }
+
+/* Obsidian-specific styles */
+.form-help {
+  font-size: 0.875rem;
+  color: #888;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
+.callout-mapping {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+.mapping-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #333;
+}
+
+.mapping-item:last-child {
+  border-bottom: none;
+}
+
+.mapping-source {
+  flex: 1;
+  color: #ccc;
+  font-size: 0.875rem;
+}
+
+.mapping-arrow {
+  color: #00ff88;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.mapping-target {
+  flex: 1;
+  color: #00ff88;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  background: #1a1a1a;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.checkbox-group .checkbox-label {
+  margin-bottom: 0.75rem;
+}
+
+.checkbox-group .checkbox-label:last-child {
+  margin-bottom: 0;
+}
