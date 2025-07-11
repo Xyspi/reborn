@@ -20,6 +20,7 @@ export interface ScrapingConfig {
   };
   obsidianFormat?: boolean;
   obsidianConfig?: Partial<ObsidianFormatterConfig>;
+  obsidianVaultPath?: string; // Path to Obsidian vault directory
 }
 
 export interface ScrapingProgress {
@@ -210,6 +211,7 @@ export class ScraperService extends EventEmitter {
         case 'markdown':
         case 'md':
           let finalContent = content;
+          let finalOutputDir = outputDir;
           
           // Apply Obsidian-specific formatting if enabled
           if (this.currentConfig?.obsidianFormat) {
@@ -227,12 +229,19 @@ export class ScraperService extends EventEmitter {
               `${formattedTitle}\n\n${finalContent}`,
               metadata
             );
+            
+            // Use Obsidian vault path if specified
+            if (this.currentConfig.obsidianVaultPath) {
+              finalOutputDir = this.currentConfig.obsidianVaultPath;
+              // Ensure vault directory exists
+              await fs.mkdir(finalOutputDir, { recursive: true });
+            }
           } else {
             finalContent = `# ${title}\n\n${content}`;
           }
           
           await fs.writeFile(
-            join(outputDir, `${filename}.md`),
+            join(finalOutputDir, `${filename}.md`),
             finalContent,
             'utf8'
           );
