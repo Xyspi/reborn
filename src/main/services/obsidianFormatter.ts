@@ -3,6 +3,15 @@ import * as cheerio from 'cheerio';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
+// Unified.js ecosystem imports
+import { unified } from 'unified';
+import rehypeParse from 'rehype-parse';
+import rehypeRemark from 'rehype-remark';
+import remarkStringify from 'remark-stringify';
+import rehypeRaw from 'rehype-raw';
+import type { Element, Node } from 'hast';
+import { visit } from 'unist-util-visit';
+
 export interface ObsidianFormatterConfig {
   enableCallouts: boolean;
   enableWikilinks: boolean;
@@ -322,75 +331,35 @@ export class ObsidianFormatter {
   }
 
   public formatAsObsidian(html: string): string {
-    console.log('\n🚀 === OBSIDIAN FORMATTING STARTED ===');
+    console.log('\n🚀 === NEW UNIFIED.JS OBSIDIAN FORMATTING ===');
     console.log('📥 Raw HTML received (first 500 chars):', html.substring(0, 500));
     console.log('📏 Total HTML length:', html.length);
     console.log('🔧 Debug mode enabled:', this.config.debugMode);
     console.log('🎨 Admonitions enabled:', this.config.useAdmonitions);
-    console.log('📦 Interactive callouts:', this.config.interactiveCallouts);
     
-    // FORCE LOGGING - TEST LOG TO ENSURE VISIBILITY
-    console.log('\n🔥 FORCED TEST LOG - THIS SHOULD BE VISIBLE! HTML length:', html.length);
-    console.log('🔥 FORCED TEST LOG - Config debug:', this.config.debugMode);
-    console.log('🔥 FORCED TEST LOG - HTML preview:', html.substring(0, 200));
-    
-    // FORCE HTML ANALYSIS - Always run regardless of debug mode to see what's happening
-    console.log('\n🔍 === STARTING HTML ANALYSIS (FORCED) ===');
-    
-    // Stage 1: Analyzing HTML structure
-    const debugInfo = this.analyzeHtmlStructure(html);
-    console.log('📈 HTB Academy HTML Analysis Result:');
-    console.log('  Summary:', debugInfo.summary);
-    console.log('  Total elements:', debugInfo.totalElements);
-    console.log('  Potential callouts found:', debugInfo.potentialCallouts.length);
-    console.log('  Text patterns found:', debugInfo.textPatterns.length);
-    
-    // Save debug info to file for analysis (transparent to user)
-    this.saveDebugInfo(debugInfo);
-    
-    console.log('🔍 === HTML ANALYSIS COMPLETE ===\n');
-    
-    // Debug mode: additional analysis if enabled
-    if (this.config.debugMode) {
-      console.log('🔍 === ADDITIONAL DEBUG INFO ===');
-      console.log('Full debug object:', JSON.stringify(debugInfo, null, 2));
-      console.log('🔍 === END ADDITIONAL DEBUG ===\n');
-    }
-    
-    if (!this.config.enableCallouts) {
-      const result = this.turndownService.turndown(html);
-      return result;
-    }
-    
-    // Check if interactive callouts are enabled
-    if (this.config.interactiveCallouts) {
-      // For interactive mode, just convert to markdown and return suggestions separately
-      const markdown = this.turndownService.turndown(html);
+    try {
+      // Use unified.js pipeline for clean HTML to markdown conversion
+      const result = unified()
+        .use(rehypeParse, { fragment: true })
+        .use(rehypeRaw) // Handle raw HTML
+        .use(this.createCalloutPlugin()) // Custom plugin for HTB Academy callouts
+        .use(rehypeRemark)
+        .use(remarkStringify, {
+          bullet: '-',
+          fences: true,
+          incrementListMarker: true,
+        })
+        .processSync(html);
+      
+      const markdown = String(result);
+      console.log('🏆 Unified.js conversion complete! Length:', markdown.length);
+      
       return markdown.trim();
+    } catch (error) {
+      console.error('🔥 Unified.js conversion failed:', error);
+      // Fallback to old method if unified fails
+      return this.formatAsObsidianLegacy(html);
     }
-    
-    // Enhanced approach: detect HTML elements first, then convert to markdown
-    console.log('🔍 === STARTING CALLOUT DETECTION ===');
-    let processedHtml = this.detectAndReplaceCallouts(html);
-    console.log('🔄 HTML processed for callouts');
-    
-    // Convert to markdown
-    console.log('📝 === CONVERTING TO MARKDOWN ===');
-    let markdown = this.turndownService.turndown(processedHtml);
-    console.log('📜 Initial markdown length:', markdown.length);
-    
-    // Post-process markdown to add callouts based on text patterns
-    console.log('🔍 === ENHANCING WITH TEXT CALLOUTS ===');
-    markdown = this.enhanceWithCallouts(markdown);
-    console.log('🔄 Text patterns processed');
-    
-    // Replace callout markers with actual callouts
-    console.log('🔄 === REPLACING CALLOUT MARKERS ===');
-    markdown = this.replaceCalloutMarkers(markdown);
-    console.log('🏁 Final markdown length:', markdown.trim().length);
-    
-    console.log('🏆 === OBSIDIAN FORMATTING COMPLETE ===\n');
-    return markdown.trim();
   }
   
   /**
@@ -764,6 +733,120 @@ export class ObsidianFormatter {
     }
   }
   
+  /**
+   * Create a unified.js plugin for HTB Academy callouts
+   */
+  private createCalloutPlugin() {
+    const config = this.config;
+    
+    return function calloutPlugin() {
+      return function transformer(tree: Node) {
+        console.log('🔍 === UNIFIED.JS CALLOUT PLUGIN ===');
+        
+        visit(tree, 'element', (node: any, index: any, parent: any) => {
+          const tagName = node.tagName;
+          const properties = node.properties || {};
+          const className = Array.isArray(properties.className) 
+            ? properties.className.join(' ') 
+            : String(properties.className || '');
+          
+          // Detect callout-worthy elements
+          let calloutType: string | null = null;
+          
+          // 1. Code elements (très important pour HTB Academy)
+          if (tagName === 'code' || tagName === 'pre') {
+            calloutType = 'code';
+            console.log(`🔥 Found ${tagName} element - converting to code callout`);
+          }
+          
+          // 2. Tables (convert to info callouts)
+          else if (tagName === 'table') {
+            calloutType = 'info';
+            console.log(`🔥 Found table element - converting to info callout`);
+          }
+          
+          // 3. Semantic HTML elements
+          else if (tagName === 'blockquote') {
+            calloutType = 'quote';
+            console.log(`🔥 Found blockquote element - converting to quote callout`);
+          }
+          else if (tagName === 'aside') {
+            calloutType = 'note';
+            console.log(`🔥 Found aside element - converting to note callout`);
+          }
+          
+          // 4. CSS class-based detection
+          else if (className && typeof className === 'string') {
+            if (className.includes('alert') || className.includes('info')) {
+              calloutType = 'info';
+              console.log(`🔥 Found alert/info class: ${className}`);
+            }
+            else if (className.includes('warning') || className.includes('danger')) {
+              calloutType = 'warning';
+              console.log(`🔥 Found warning/danger class: ${className}`);
+            }
+            else if (className.includes('example') || className.includes('exercise')) {
+              calloutType = 'example';
+              console.log(`🔥 Found example/exercise class: ${className}`);
+            }
+          }
+          
+          // Transform the element if it's a callout
+          if (calloutType && parent && index !== undefined) {
+            const mappedType = config.calloutMapping[calloutType] || calloutType;
+            
+            // Create callout syntax based on configuration
+            const calloutSyntax = config.useAdmonitions 
+              ? `ad-${mappedType}` 
+              : `[!${mappedType}]`;
+            
+            // Convert element to callout
+            const calloutElement: Element = {
+              type: 'element',
+              tagName: config.useAdmonitions ? 'div' : 'blockquote',
+              properties: {
+                className: ['callout', `callout-${mappedType}`],
+                'data-callout': mappedType
+              },
+              children: [
+                {
+                  type: 'element',
+                  tagName: 'p',
+                  properties: {},
+                  children: [
+                    {
+                      type: 'text',
+                      value: config.useAdmonitions 
+                        ? `\`\`\`${calloutSyntax}\n` 
+                        : `> ${calloutSyntax}\n> `
+                    }
+                  ]
+                },
+                ...(node.children || [])
+              ]
+            };
+            
+            // Replace the original element
+            if (parent && parent.children && Array.isArray(parent.children) && index !== undefined) {
+              parent.children[index] = calloutElement;
+            }
+            console.log(`🏆 Converted ${tagName} to ${mappedType} callout`);
+          }
+        });
+        
+        console.log('🔍 === CALLOUT PLUGIN COMPLETE ===');
+      };
+    };
+  }
+  
+  /**
+   * Legacy fallback method using the old approach
+   */
+  private formatAsObsidianLegacy(html: string): string {
+    console.log('🔄 Using legacy fallback method');
+    return this.turndownService.turndown(html);
+  }
+  
   private detectAndReplaceCallouts(html: string): string {
     const $ = cheerio.load(html);
     
@@ -888,6 +971,7 @@ export class ObsidianFormatter {
     return $.html() || html;
   }
   
+  // Legacy - kept for backward compatibility
   private calloutReplacements: Map<string, { content: string; type: string }> = new Map();
   
   /**
