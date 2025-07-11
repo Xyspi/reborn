@@ -6,6 +6,7 @@ export interface ObsidianFormatterConfig {
   enableWikilinks: boolean;
   enableCodeBlocks: boolean;
   enableTables: boolean;
+  useAdmonitions: boolean; // Use Admonitions plugin syntax instead of native callouts
   calloutMapping: {
     [key: string]: string;
   };
@@ -28,6 +29,7 @@ export class ObsidianFormatter {
       enableWikilinks: true,
       enableCodeBlocks: true,
       enableTables: true,
+      useAdmonitions: false, // Default to native callouts
       calloutMapping: {
         'info': 'info',
         'note': 'note',
@@ -317,7 +319,14 @@ export class ObsidianFormatter {
     patterns.forEach(({ pattern, type }) => {
       markdown = markdown.replace(pattern, (match, label, content) => {
         const calloutType = this.config.calloutMapping[type] || 'note';
-        return `\n> [!${calloutType}]\n> ${content.trim()}\n`;
+        
+        if (this.config.useAdmonitions) {
+          // Use Admonitions plugin syntax
+          return `\n\`\`\`ad-${calloutType}\n${content.trim()}\n\`\`\`\n`;
+        } else {
+          // Use native Obsidian callout syntax
+          return `\n> [!${calloutType}]\n> ${content.trim()}\n`;
+        }
       });
     });
     
@@ -346,7 +355,14 @@ export class ObsidianFormatter {
         }
         
         const calloutType = this.config.calloutMapping[type] || 'note';
-        enhancedLines.push(`\n> [!${calloutType}]\n> ${content.trim()}\n`);
+        
+        if (this.config.useAdmonitions) {
+          // Use Admonitions plugin syntax
+          enhancedLines.push(`\n\`\`\`ad-${calloutType}\n${content.trim()}\n\`\`\`\n`);
+        } else {
+          // Use native Obsidian callout syntax
+          enhancedLines.push(`\n> [!${calloutType}]\n> ${content.trim()}\n`);
+        }
       } else {
         enhancedLines.push(line);
       }

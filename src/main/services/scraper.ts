@@ -181,7 +181,15 @@ export class ScraperService extends EventEmitter {
       
       // Update ObsidianFormatter configuration if provided
       if (this.currentConfig.obsidianConfig) {
-        this.obsidianFormatter = new ObsidianFormatter(this.currentConfig.obsidianConfig);
+        this.obsidianFormatter = new ObsidianFormatter({
+          useAdmonitions: true, // Enable Admonitions by default
+          ...this.currentConfig.obsidianConfig
+        });
+      } else {
+        // Use default config with Admonitions enabled
+        this.obsidianFormatter = new ObsidianFormatter({
+          useAdmonitions: true
+        });
       }
       
       markdownContent = this.obsidianFormatter.formatAsObsidian(htmlContent);
@@ -215,7 +223,21 @@ export class ScraperService extends EventEmitter {
           
           // Apply Obsidian-specific formatting if enabled
           if (this.currentConfig?.obsidianFormat) {
+            // Update ObsidianFormatter configuration if provided
+            if (this.currentConfig.obsidianConfig) {
+              this.obsidianFormatter = new ObsidianFormatter({
+                useAdmonitions: true, // Enable Admonitions by default
+                ...this.currentConfig.obsidianConfig
+              });
+            } else {
+              // Use default config with Admonitions enabled
+              this.obsidianFormatter = new ObsidianFormatter({
+                useAdmonitions: true
+              });
+            }
+            
             const formattedTitle = this.obsidianFormatter.formatTitle(title);
+            // Note: content is already markdown from formatAsObsidian in downloadPage
             finalContent = this.obsidianFormatter.formatHeaders(content);
             
             // Add metadata if available
