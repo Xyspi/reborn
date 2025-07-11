@@ -8,33 +8,48 @@ global.app = {
 
 const { ObsidianFormatter } = require('./dist/main/services/obsidianFormatter.js');
 
-// Simulate HTB Academy HTML content
+// Simulate HTB Academy HTML content with native HTML tags
 const sampleHtmlContent = `
 <div class="module-content">
   <h1>Skills Assessment - Password Attacks</h1>
   
-  <div class="alert alert-info">
-    <strong>Info:</strong> This is an information box that should be detected.
-  </div>
+  <!-- Native blockquote (very common for callouts) -->
+  <blockquote>
+    <p><strong>Info:</strong> This information is presented in a blockquote, which is a native HTML semantic element for highlighting important content.</p>
+  </blockquote>
   
   <p>The <strong>Credential Theft Shuffle</strong>, as coined by Sean Metcalf, is a systematic approach...</p>
   
-  <div class="warning-box">
-    <p>Warning: This is a warning about potential security risks.</p>
-  </div>
+  <!-- Native aside element -->
+  <aside>
+    <p><strong>Warning:</strong> This warning content is in an aside element, which semantically represents content that is tangentially related to the main content.</p>
+  </aside>
   
-  <div class="exercise">
-    <h3>Exercise</h3>
-    <p>Complete the following practical exercise to test your understanding.</p>
-  </div>
+  <!-- Native details/summary elements -->
+  <details>
+    <summary>Exercise: Complete this practical exercise</summary>
+    <p>This exercise content is in a details/summary element, which is perfect for expandable callouts or examples.</p>
+    <p>Try to identify the password policy configuration on the target system.</p>
+  </details>
   
-  <p>Note: This is a note that should be detected by text pattern matching.</p>
+  <!-- Strong elements with callout keywords -->
+  <p><strong>Note:</strong> This is a note with a strong tag containing the keyword.</p>
   
-  <div class="highlight">
-    <p>This is highlighted content that might be important.</p>
-  </div>
+  <p><strong>Important:</strong> Always validate your findings before proceeding.</p>
+  
+  <p><strong>Tip:</strong> Use the --verbose flag to get more detailed output.</p>
+  
+  <!-- Paragraphs starting with callout keywords -->
+  <p>Example: Here's how you would run the command in practice.</p>
+  
+  <p>Exercise: Try this on your own lab environment.</p>
   
   <p>Regular paragraph content without any special formatting.</p>
+  
+  <!-- Traditional CSS class-based content (fallback) -->
+  <div class="alert alert-info">
+    <strong>Info:</strong> This is a traditional CSS class-based alert.
+  </div>
   
   <table>
     <tr><th>Host</th><th>IP Address</th></tr>

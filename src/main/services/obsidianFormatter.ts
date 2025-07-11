@@ -372,8 +372,25 @@ export class ObsidianFormatter {
       summary: ''
     };
     
+    // Analyze native HTML tags that commonly contain callout content
+    const nativeTagAnalysis = [
+      // Block elements that often contain special content
+      'blockquote', 'aside', 'details', 'summary',
+      // Semantic elements
+      'section', 'article', 'header', 'footer', 'main',
+      // List elements that might contain structured info
+      'ul', 'ol', 'dl', 'dt', 'dd',
+      // Emphasis and strong elements with specific patterns
+      'strong', 'em', 'b', 'i', 'mark',
+      // Div elements (most common container)
+      'div', 'span', 'p'
+    ];
+    
     // Test all possible selectors that might contain callouts
     const testSelectors = [
+      // Native HTML semantic tags (most reliable)
+      'blockquote', 'aside', 'details', 'summary',
+      
       // Bootstrap/common alert patterns
       '.alert', '.alert-info', '.alert-warning', '.alert-danger', '.alert-success',
       '.alert-primary', '.alert-secondary', '.alert-light', '.alert-dark',
@@ -403,6 +420,24 @@ export class ObsidianFormatter {
       '[data-type="info"]', '[data-type="warning"]', '[data-type="note"]',
       '[data-callout]', '[data-alert]'
     ];
+    
+    // First, analyze the native HTML structure
+    console.log('🔍 Native HTML Tag Analysis:');
+    nativeTagAnalysis.forEach(tag => {
+      const elements = $(tag);
+      if (elements.length > 0) {
+        console.log(`  ${tag}: ${elements.length} elements found`);
+        elements.each((i, el) => {
+          if (i < 2) { // Show first 2 examples
+            const $el = $(el);
+            const text = $el.text().trim();
+            const classes = $el.attr('class') || 'no-class';
+            const tagInfo = `${tag}.${classes}`;
+            console.log(`    Example: ${tagInfo} - "${text.substring(0, 80)}..."`);
+          }
+        });
+      }
+    });
     
     testSelectors.forEach(selector => {
       try {
@@ -655,8 +690,18 @@ export class ObsidianFormatter {
   private detectAndReplaceCallouts(html: string): string {
     const $ = cheerio.load(html);
     
-    // HTB Academy specific callout patterns
-    const calloutPatterns = [
+    // Native HTML tag-based callout patterns (more reliable)
+    const nativeTagPatterns = [
+      // Semantic HTML elements that naturally represent callouts
+      { selector: 'blockquote', type: 'quote' },
+      { selector: 'aside', type: 'note' },
+      { selector: 'details', type: 'example' },
+      { selector: 'summary', type: 'abstract' },
+      
+    ];
+    
+    // HTB Academy CSS class-based patterns (fallback)
+    const cssClassPatterns = [
       // Common alert/info boxes
       { selector: '.alert, .alert-info, .info-box, .note-info', type: 'info' },
       { selector: '.alert-warning, .warning-box, .note-warning', type: 'warning' },
@@ -689,8 +734,11 @@ export class ObsidianFormatter {
       { selector: '[class*="abstract"]', type: 'abstract' },
     ];
     
-    // Process each pattern
-    calloutPatterns.forEach(({ selector, type }) => {
+    // Combine patterns: native tags first (more reliable), then CSS classes
+    const allPatterns = [...nativeTagPatterns, ...cssClassPatterns];
+    
+    // Process native tag patterns first
+    allPatterns.forEach(({ selector, type }) => {
       const elements = $(selector);
       
       elements.each((_, element) => {
@@ -724,10 +772,76 @@ export class ObsidianFormatter {
       });
     });
     
+    // Now process text-based patterns manually
+    this.processTextBasedCallouts($);
+    
     return $.html() || html;
   }
   
   private calloutReplacements: Map<string, { content: string; type: string }> = new Map();
+  
+  /**
+   * Process text-based callout patterns (strong tags and paragraphs with keywords)
+   */
+  private processTextBasedCallouts($: cheerio.CheerioAPI): void {
+    const textPatterns = [
+      { keywords: ['Note:', 'NOTE:'], type: 'note' },
+      { keywords: ['Warning:', 'WARNING:'], type: 'warning' },
+      { keywords: ['Important:', 'IMPORTANT:'], type: 'note' },
+      { keywords: ['Example:', 'EXAMPLE:'], type: 'example' },
+      { keywords: ['Exercise:', 'EXERCISE:'], type: 'example' },
+      { keywords: ['Tip:', 'TIP:'], type: 'tip' },
+      { keywords: ['Info:', 'INFO:'], type: 'info' },
+    ];
+    
+    textPatterns.forEach(({ keywords, type }) => {
+      keywords.forEach(keyword => {
+        // Find strong tags containing the keyword
+        $('strong').each((_, element) => {
+          const $element = $(element);
+          const text = $element.text().trim();
+          
+          if (text.includes(keyword) && !$element.hasClass('processed-callout')) {
+            // Get the parent paragraph
+            const $parent = $element.closest('p');
+            if ($parent.length > 0 && !$parent.hasClass('processed-callout')) {
+              this.replaceWithCalloutMarker($parent, type);
+            }
+          }
+        });
+        
+        // Find paragraphs starting with the keyword
+        $('p').each((_, element) => {
+          const $element = $(element);
+          const text = $element.text().trim();
+          
+          if (text.startsWith(keyword) && !$element.hasClass('processed-callout')) {
+            this.replaceWithCalloutMarker($element, type);
+          }
+        });
+      });
+    });
+  }
+  
+  /**
+   * Replace an element with a callout marker
+   */
+  private replaceWithCalloutMarker($element: cheerio.Cheerio<any>, type: string): void {
+    const content = $element.html();
+    if (!content || content.trim().length === 0) return;
+    
+    const calloutType = this.config.calloutMapping[type] || 'note';
+    const calloutMarker = `__CALLOUT_${type.toUpperCase()}_${Math.random().toString(36).substr(2, 9)}__`;
+    
+    // Replace the element with a marker
+    $element.replaceWith(`<div class="callout-placeholder">${calloutMarker}</div>`);
+    
+    // Store the mapping for later replacement
+    if (!this.calloutReplacements) {
+      this.calloutReplacements = new Map();
+    }
+    this.calloutReplacements.set(calloutMarker, { content, type: calloutType });
+  }
   
   private replaceCalloutMarkers(markdown: string): string {
     // Replace all callout markers with their actual callout content

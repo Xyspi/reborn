@@ -1,0 +1,140 @@
+{
+  "totalElements": 39,
+  "potentialCallouts": [
+    {
+      "selector": "blockquote",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "",
+          "text": "Info: This information is presented in a blockquote, which is a native HTML semantic element for highlighting important content.",
+          "html": "\n    <p><strong>Info:</strong> This information is presented in a blockquote, which is a native HTML semantic element for highlighting important content.</p>\n  "
+        }
+      ]
+    },
+    {
+      "selector": "aside",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "",
+          "text": "Warning: This warning content is in an aside element, which semantically represents content that is tangentially related to the main content.",
+          "html": "\n    <p><strong>Warning:</strong> This warning content is in an aside element, which semantically represents content that is tangentially related to the main content.</p>\n  "
+        }
+      ]
+    },
+    {
+      "selector": "details",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "",
+          "text": "Exercise: Complete this practical exercise\n    This exercise content is in a details/summary element, which is perfect for expandable callouts or exam",
+          "html": "\n    <summary>Exercise: Complete this practical exercise</summary>\n    <p>This exercise content is in a details/summary element, which is perfect for expandable callouts or examples.</p>\n    <p>Try to"
+        }
+      ]
+    },
+    {
+      "selector": "summary",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "",
+          "text": "Exercise: Complete this practical exercise",
+          "html": "Exercise: Complete this practical exercise"
+        }
+      ]
+    },
+    {
+      "selector": ".alert",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is a traditional CSS class-based alert.",
+          "html": "\n    <strong>Info:</strong> This is a traditional CSS class-based alert.\n  "
+        }
+      ]
+    },
+    {
+      "selector": ".alert-info",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is a traditional CSS class-based alert.",
+          "html": "\n    <strong>Info:</strong> This is a traditional CSS class-based alert.\n  "
+        }
+      ]
+    },
+    {
+      "selector": "[class*=\"info\"]",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is a traditional CSS class-based alert.",
+          "html": "\n    <strong>Info:</strong> This is a traditional CSS class-based alert.\n  "
+        }
+      ]
+    },
+    {
+      "selector": "[class*=\"alert\"]",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is a traditional CSS class-based alert.",
+          "html": "\n    <strong>Info:</strong> This is a traditional CSS class-based alert.\n  "
+        }
+      ]
+    }
+  ],
+  "textPatterns": [
+    {
+      "pattern": "Note:",
+      "matches": [
+        "This is a note with a strong tag containing the keyword."
+      ]
+    },
+    {
+      "pattern": "Warning:",
+      "matches": [
+        "This warning content is in an aside element, which semantically represents content that is tangentia"
+      ]
+    },
+    {
+      "pattern": "Important:",
+      "matches": [
+        "Always validate your findings before proceeding."
+      ]
+    },
+    {
+      "pattern": "Example:",
+      "matches": [
+        "Here's how you would run the command in practice."
+      ]
+    },
+    {
+      "pattern": "Exercise:",
+      "matches": [
+        "Complete this practical exercise",
+        "Try this on your own lab environment."
+      ]
+    },
+    {
+      "pattern": "Tip:",
+      "matches": [
+        "Use the --verbose flag to get more detailed output."
+      ]
+    },
+    {
+      "pattern": "Info:",
+      "matches": [
+        "This information is presented in a blockquote, which is a native HTML semantic element for highlight",
+        "This is a traditional CSS class-based alert."
+      ]
+    }
+  ],
+  "summary": "Found 8 potential HTML callouts and 9 text patterns in 39 total elements"
+}
