@@ -270,7 +270,7 @@ export class ScraperService extends EventEmitter {
   /**
    * Validate configuration before starting scraping
    */
-  private validateConfig(config: ScrapingConfig): ValidationResult {
+  public validateConfig(config: ScrapingConfig): ValidationResult {
     // Validate cookies
     const cookieValidation = this.validateCookies(config.cookies);
     if (!cookieValidation.valid) {
@@ -297,15 +297,42 @@ export class ScraperService extends EventEmitter {
       return { valid: false, error: 'Cookies are required' };
     }
 
-    // Basic cookie format validation
-    const cookieRegex = /^[a-zA-Z0-9_-]+=[a-zA-Z0-9_\-\.%]+(?:; [a-zA-Z0-9_-]+=[a-zA-Z0-9_\-\.%]+)*$/;
-    if (!cookieRegex.test(cookies.trim())) {
-      return { valid: false, error: 'Invalid cookie format' };
+    // Very permissive cookie format validation
+    // Allow various cookie formats including those with attributes
+    const trimmedCookies = cookies.trim();
+    
+    // Basic sanity check - should contain at least one name=value pair
+    if (!trimmedCookies.includes('=')) {
+      return { valid: false, error: 'Invalid cookie format. Cookies must contain name=value pairs' };
     }
 
-    // Check for HTB Academy specific cookies
-    if (!cookies.includes('htb_academy_session')) {
-      return { valid: false, error: 'HTB Academy session cookie is required' };
+    // Check for dangerous patterns
+    if (cookies.includes('<script') || cookies.includes('javascript:')) {
+      return { valid: false, error: 'Potentially dangerous content detected in cookies' };
+    }
+
+    // Additional validation: split by semicolon and check each part
+    const cookieParts = trimmedCookies.split(';');
+    for (const part of cookieParts) {
+      const trimmedPart = part.trim();
+      if (trimmedPart.length === 0) continue; // Skip empty parts
+      
+      // Check if it's a cookie attribute (path, domain, etc.) or a name=value pair
+      if (trimmedPart.includes('=')) {
+        const [name, ...valueParts] = trimmedPart.split('=');
+        const value = valueParts.join('='); // Rejoin in case value contains =
+        
+        // Name should not be empty
+        if (name.trim().length === 0) {
+          return { valid: false, error: 'Invalid cookie format. Cookie names cannot be empty' };
+        }
+        
+        // Value can be empty for some cookies
+        // Allow empty values as they're valid in HTTP cookies
+      } else {
+        // This might be a cookie attribute like 'secure', 'HttpOnly', etc.
+        // These are valid in cookie strings
+      }
     }
 
     return { valid: true };
