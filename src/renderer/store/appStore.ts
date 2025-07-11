@@ -32,6 +32,15 @@ export interface ScrapingProgress {
   error?: string;
 }
 
+export interface HtmlParsingProgress {
+  isVisible: boolean;
+  progress: number;
+  stage: 'analyzing' | 'detecting' | 'converting' | 'complete';
+  currentUrl?: string;
+  potentialCallouts?: number;
+  textPatterns?: number;
+}
+
 interface AppState {
   // UI State
   sidebarOpened: boolean;
@@ -40,6 +49,7 @@ interface AppState {
   // Scraping State
   config: ScrapingConfig;
   progress: ScrapingProgress;
+  htmlParsingProgress: HtmlParsingProgress;
   isRunning: boolean;
   isPaused: boolean;
   urls: string[];
@@ -49,6 +59,7 @@ interface AppState {
   setCurrentTab: (tab: string) => void;
   updateConfig: (config: Partial<ScrapingConfig>) => void;
   updateProgress: (progress: Partial<ScrapingProgress>) => void;
+  updateHtmlParsingProgress: (progress: Partial<HtmlParsingProgress>) => void;
   addUrl: (url: string) => void;
   removeUrl: (index: number) => void;
   clearUrls: () => void;
@@ -102,6 +113,15 @@ export const useAppStore = create<AppState>()(
         status: 'downloading',
       },
       
+      htmlParsingProgress: {
+        isVisible: false,
+        progress: 0,
+        stage: 'analyzing',
+        currentUrl: undefined,
+        potentialCallouts: undefined,
+        textPatterns: undefined,
+      },
+      
       isRunning: false,
       isPaused: false,
       urls: [],
@@ -119,6 +139,11 @@ export const useAppStore = create<AppState>()(
       updateProgress: (newProgress) =>
         set((state) => ({
           progress: { ...state.progress, ...newProgress },
+        })),
+        
+      updateHtmlParsingProgress: (newProgress) =>
+        set((state) => ({
+          htmlParsingProgress: { ...state.htmlParsingProgress, ...newProgress },
         })),
       
       // URL Management

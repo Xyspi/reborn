@@ -1,12 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { UpdateChecker } from './UpdateChecker';
+import { HtmlParsingProgress } from '../../components/HtmlParsingProgress';
 
 export function MainContent() {
   const {
     config,
     updateConfig,
     progress,
+    htmlParsingProgress,
     isRunning,
     isPaused,
     startScraping,
@@ -17,6 +19,7 @@ export function MainContent() {
     addUrl,
     removeUrl,
     clearUrls,
+    updateHtmlParsingProgress,
   } = useAppStore();
 
   const [newUrl, setNewUrl] = useState('');
@@ -38,9 +41,49 @@ export function MainContent() {
     }
 
     try {
+      // Show HTML parsing progress for Obsidian format
+      if (config.obsidianFormat) {
+        updateHtmlParsingProgress({
+          isVisible: true,
+          progress: 0,
+          stage: 'analyzing',
+          currentUrl: urls[0],
+        });
+        
+        // Simulate parsing stages
+        setTimeout(() => {
+          updateHtmlParsingProgress({
+            progress: 33,
+            stage: 'detecting',
+          });
+        }, 1000);
+        
+        setTimeout(() => {
+          updateHtmlParsingProgress({
+            progress: 66,
+            stage: 'converting',
+            potentialCallouts: 5,
+            textPatterns: 3,
+          });
+        }, 2000);
+        
+        setTimeout(() => {
+          updateHtmlParsingProgress({
+            progress: 100,
+            stage: 'complete',
+          });
+          
+          // Hide after showing completion
+          setTimeout(() => {
+            updateHtmlParsingProgress({ isVisible: false });
+          }, 1500);
+        }, 3000);
+      }
+      
       await startScraping();
       console.log('Scraping started successfully');
     } catch (error) {
+      updateHtmlParsingProgress({ isVisible: false });
       alert(`Failed to start scraping: ${error}`);
     }
   };
@@ -389,6 +432,16 @@ export function MainContent() {
 
       {/* Update Checker */}
       <UpdateChecker />
+      
+      {/* HTML Parsing Progress Modal */}
+      <HtmlParsingProgress
+        isVisible={htmlParsingProgress.isVisible}
+        progress={htmlParsingProgress.progress}
+        stage={htmlParsingProgress.stage}
+        currentUrl={htmlParsingProgress.currentUrl}
+        potentialCallouts={htmlParsingProgress.potentialCallouts}
+        textPatterns={htmlParsingProgress.textPatterns}
+      />
     </div>
   );
 }

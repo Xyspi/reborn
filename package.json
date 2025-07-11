@@ -70,6 +70,7 @@
     }
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
@@ -78,23 +79,32 @@
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
     "archiver": "^7.0.1",
+    "autoprefixer": "^10.4.21",
     "concurrently": "^8.2.2",
     "electron": "^28.0.0",
     "electron-builder": "^24.8.1",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.5.6",
     "prettier": "^3.1.0",
+    "tailwindcss": "^4.1.11",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "wait-on": "^7.2.0"
   },
   "dependencies": {
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-toast": "^1.2.14",
     "axios": "^1.6.2",
     "cheerio": "^1.0.0-rc.12",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "electron-store": "^8.1.0",
+    "lucide-react": "^0.525.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "tailwind-merge": "^3.3.1",
     "turndown": "^7.1.2",
     "zustand": "^4.4.7"
   }

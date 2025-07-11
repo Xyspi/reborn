@@ -325,6 +325,7 @@ export class ObsidianFormatter {
     
     // Debug mode: analyze HTML structure first
     if (this.config.debugMode) {
+      // Stage 1: Analyzing HTML structure
       const debugInfo = this.analyzeHtmlStructure(html);
       console.log('🔍 HTB Academy HTML Analysis:', JSON.stringify(debugInfo, null, 2));
       
