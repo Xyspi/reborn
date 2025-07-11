@@ -3,14 +3,14 @@ import * as cheerio from 'cheerio';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
-// Unified.js ecosystem imports
-import { unified } from 'unified';
-import rehypeParse from 'rehype-parse';
-import rehypeRemark from 'rehype-remark';
-import remarkStringify from 'remark-stringify';
-import rehypeRaw from 'rehype-raw';
-import type { Element, Node } from 'hast';
-import { visit } from 'unist-util-visit';
+// Unified.js ecosystem imports - using dynamic imports for ESM modules
+// import { unified } from 'unified';
+// import rehypeParse from 'rehype-parse';
+// import rehypeRemark from 'rehype-remark';
+// import remarkStringify from 'remark-stringify';
+// import rehypeRaw from 'rehype-raw';
+// import type { Element, Node } from 'hast';
+// import { visit } from 'unist-util-visit';
 
 export interface ObsidianFormatterConfig {
   enableCallouts: boolean;
@@ -330,7 +330,7 @@ export class ObsidianFormatter {
     return sections;
   }
 
-  public formatAsObsidian(html: string): string {
+  public async formatAsObsidian(html: string): Promise<string> {
     console.log('\n🚀 === NEW UNIFIED.JS OBSIDIAN FORMATTING ===');
     console.log('📥 Raw HTML received (first 500 chars):', html.substring(0, 500));
     console.log('📏 Total HTML length:', html.length);
@@ -338,11 +338,19 @@ export class ObsidianFormatter {
     console.log('🎨 Admonitions enabled:', this.config.useAdmonitions);
     
     try {
+      // Dynamic import for ESM modules
+      const { unified } = await import('unified');
+      const { default: rehypeParse } = await import('rehype-parse');
+      const { default: rehypeRemark } = await import('rehype-remark');
+      const { default: remarkStringify } = await import('remark-stringify');
+      const { default: rehypeRaw } = await import('rehype-raw');
+      const { visit } = await import('unist-util-visit');
+      
       // Use unified.js pipeline for clean HTML to markdown conversion
       const result = unified()
         .use(rehypeParse, { fragment: true })
         .use(rehypeRaw) // Handle raw HTML
-        .use(this.createCalloutPlugin()) // Custom plugin for HTB Academy callouts
+        .use(this.createCalloutPlugin(visit)) // Custom plugin for HTB Academy callouts
         .use(rehypeRemark)
         .use(remarkStringify, {
           bullet: '-',
@@ -736,11 +744,11 @@ export class ObsidianFormatter {
   /**
    * Create a unified.js plugin for HTB Academy callouts
    */
-  private createCalloutPlugin() {
+  private createCalloutPlugin(visit: any) {
     const config = this.config;
     
     return function calloutPlugin() {
-      return function transformer(tree: Node) {
+      return function transformer(tree: any) {
         console.log('🔍 === UNIFIED.JS CALLOUT PLUGIN ===');
         
         visit(tree, 'element', (node: any, index: any, parent: any) => {

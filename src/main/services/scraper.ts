@@ -194,7 +194,7 @@ export class ScraperService extends EventEmitter {
         });
       }
       
-      markdownContent = this.obsidianFormatter.formatAsObsidian(htmlContent);
+      markdownContent = await this.obsidianFormatter.formatAsObsidian(htmlContent);
     } else {
       markdownContent = this.turndownService.turndown(htmlContent);
     }

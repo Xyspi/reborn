@@ -97,6 +97,7 @@
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-toast": "^1.2.14",
     "@types/hast": "^3.0.4",
+    "@types/unist": "^3.0.3",
     "axios": "^1.6.2",
     "cheerio": "^1.0.0-rc.12",
     "class-variance-authority": "^0.7.1",
