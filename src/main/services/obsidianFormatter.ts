@@ -3,6 +3,11 @@ import * as cheerio from 'cheerio';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
+// Global type for unified callout replacements
+declare global {
+  var unifiedCalloutReplacements: Map<string, any>;
+}
+
 // Unified.js ecosystem imports - using dynamic imports for ESM modules
 // import { unified } from 'unified';
 // import rehypeParse from 'rehype-parse';
@@ -338,6 +343,24 @@ export class ObsidianFormatter {
     console.log('🎨 Admonitions enabled:', this.config.useAdmonitions);
     
     try {
+      // STEP 1: Extract the main content first using cheerio
+      console.log('🔍 === EXTRACTING MAIN CONTENT ===');
+      const $ = cheerio.load(html);
+      
+      // HTB Academy specific content selectors
+      const mainContent = $('.training-module').first();
+      if (mainContent.length === 0) {
+        console.log('📝 No .training-module found, using full HTML');
+        // If no main content found, use the full HTML
+      } else {
+        console.log('🏆 Found .training-module content, extracting...');
+        html = mainContent.html() || html;
+        console.log('📜 Extracted content length:', html.length);
+      }
+      
+      // STEP 2: Now process with unified.js
+      console.log('🔍 === PROCESSING WITH UNIFIED.JS ===');
+      
       // Dynamic import for ESM modules
       const { unified } = await import('unified');
       const { default: rehypeParse } = await import('rehype-parse');
@@ -359,8 +382,13 @@ export class ObsidianFormatter {
         })
         .processSync(html);
       
-      const markdown = String(result);
-      console.log('🏆 Unified.js conversion complete! Length:', markdown.length);
+      let markdown = String(result);
+      console.log('🏆 Unified.js conversion complete! Final length:', markdown.length);
+      
+      // STEP 3: Process unified callout markers
+      console.log('🔍 === PROCESSING UNIFIED CALLOUT MARKERS ===');
+      markdown = this.processUnifiedCalloutMarkers(markdown);
+      console.log('🏆 Unified callout markers processed! Final length:', markdown.length);
       
       return markdown.trim();
     } catch (error) {
@@ -803,50 +831,111 @@ export class ObsidianFormatter {
           if (calloutType && parent && index !== undefined) {
             const mappedType = config.calloutMapping[calloutType] || calloutType;
             
-            // Create callout syntax based on configuration
-            const calloutSyntax = config.useAdmonitions 
-              ? `ad-${mappedType}` 
-              : `[!${mappedType}]`;
+            // Instead of complex AST manipulation, add a special marker
+            // that we can easily replace later with proper markdown
+            const calloutMarker = `__UNIFIED_CALLOUT_${mappedType.toUpperCase()}_${Math.random().toString(36).substr(2, 9)}__`;
             
-            // Convert element to callout
-            const calloutElement: Element = {
-              type: 'element',
-              tagName: config.useAdmonitions ? 'div' : 'blockquote',
-              properties: {
-                className: ['callout', `callout-${mappedType}`],
-                'data-callout': mappedType
-              },
-              children: [
-                {
-                  type: 'element',
-                  tagName: 'p',
-                  properties: {},
-                  children: [
-                    {
-                      type: 'text',
-                      value: config.useAdmonitions 
-                        ? `\`\`\`${calloutSyntax}\n` 
-                        : `> ${calloutSyntax}\n> `
-                    }
-                  ]
-                },
-                ...(node.children || [])
-              ]
+            // Store the original node content for later processing
+            if (!global.unifiedCalloutReplacements) {
+              global.unifiedCalloutReplacements = new Map();
+            }
+            
+            // Convert node to HTML for processing
+            const nodeHtml = nodeToHtml(node);
+            global.unifiedCalloutReplacements.set(calloutMarker, {
+              type: mappedType,
+              content: nodeHtml,
+              originalNode: node
+            });
+            
+            // Replace the node with a simple text marker
+            const textNode = {
+              type: 'text',
+              value: `\n\n${calloutMarker}\n\n`
             };
             
-            // Replace the original element
             if (parent && parent.children && Array.isArray(parent.children) && index !== undefined) {
-              parent.children[index] = calloutElement;
+              parent.children[index] = textNode;
             }
-            console.log(`🏆 Converted ${tagName} to ${mappedType} callout`);
+            
+            console.log(`🏆 Converted ${tagName} to ${mappedType} callout with marker ${calloutMarker}`);
           }
         });
         
         console.log('🔍 === CALLOUT PLUGIN COMPLETE ===');
       };
     };
+    
+    // Helper function to convert node to HTML
+    function nodeToHtml(node: any): string {
+      if (node.type === 'text') {
+        return node.value || '';
+      }
+      
+      if (node.type === 'element') {
+        const tagName = node.tagName;
+        const children = node.children || [];
+        const childrenHtml = children.map((child: any) => nodeToHtml(child)).join('');
+        
+        // Handle void elements
+        const voidElements = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'];
+        if (voidElements.includes(tagName)) {
+          return `<${tagName}>`;
+        }
+        
+        return `<${tagName}>${childrenHtml}</${tagName}>`;
+      }
+      
+      return '';
+    }
   }
   
+  /**
+   * Process unified callout markers and convert them to proper callouts
+   */
+  private processUnifiedCalloutMarkers(markdown: string): string {
+    const replacements = global.unifiedCalloutReplacements;
+    if (!replacements || replacements.size === 0) {
+      console.log('🔄 No unified callout replacements found');
+      return markdown;
+    }
+    
+    console.log(`🔥 Processing ${replacements.size} unified callout markers`);
+    
+    replacements.forEach((calloutData: any, marker: string) => {
+      console.log(`🔥 Processing marker: ${marker}`);
+      console.log(`🔥 Callout type: ${calloutData.type}`);
+      console.log(`🔥 Content preview: ${calloutData.content.substring(0, 100)}...`);
+      
+      // Convert the HTML content to markdown first
+      const markdownContent = this.turndownService.turndown(calloutData.content);
+      console.log(`🔥 Markdown content: ${markdownContent.substring(0, 100)}...`);
+      
+      // Create the final callout based on configuration
+      const finalCallout = this.config.useAdmonitions
+        ? `\n\`\`\`ad-${calloutData.type}\n${markdownContent.trim()}\n\`\`\`\n`
+        : `\n> [!${calloutData.type}]\n> ${markdownContent.replace(/\n/g, '\n> ')}\n`;
+      
+      console.log(`🔥 Final callout: ${finalCallout.substring(0, 100)}...`);
+      
+      // Check if marker exists in markdown
+      const markerExists = markdown.includes(marker);
+      console.log(`🔥 Marker exists in markdown: ${markerExists}`);
+      
+      if (markerExists) {
+        markdown = markdown.replace(marker, finalCallout);
+        console.log(`🔥 Marker replaced successfully`);
+      } else {
+        console.log(`🔥 ERROR: Marker not found in markdown!`);
+      }
+    });
+    
+    // Clear the global replacements for next use
+    global.unifiedCalloutReplacements = new Map();
+    
+    return markdown;
+  }
+
   /**
    * Legacy fallback method using the old approach
    */
