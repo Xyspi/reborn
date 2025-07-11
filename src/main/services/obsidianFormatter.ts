@@ -322,15 +322,29 @@ export class ObsidianFormatter {
   }
 
   public formatAsObsidian(html: string): string {
+    console.log('\n🚀 === OBSIDIAN FORMATTING STARTED ===');
+    console.log('📥 Raw HTML received (first 500 chars):', html.substring(0, 500));
+    console.log('📏 Total HTML length:', html.length);
+    console.log('🔧 Debug mode enabled:', this.config.debugMode);
+    console.log('🎨 Admonitions enabled:', this.config.useAdmonitions);
+    console.log('📦 Interactive callouts:', this.config.interactiveCallouts);
     
     // Debug mode: analyze HTML structure first
     if (this.config.debugMode) {
+      console.log('\n🔍 === STARTING HTML ANALYSIS ===');
+      
       // Stage 1: Analyzing HTML structure
       const debugInfo = this.analyzeHtmlStructure(html);
-      console.log('🔍 HTB Academy HTML Analysis:', JSON.stringify(debugInfo, null, 2));
+      console.log('📈 HTB Academy HTML Analysis Result:');
+      console.log('  Summary:', debugInfo.summary);
+      console.log('  Total elements:', debugInfo.totalElements);
+      console.log('  Potential callouts found:', debugInfo.potentialCallouts.length);
+      console.log('  Text patterns found:', debugInfo.textPatterns.length);
       
       // Save debug info to file for analysis (transparent to user)
       this.saveDebugInfo(debugInfo);
+      
+      console.log('🔍 === HTML ANALYSIS COMPLETE ===\n');
     }
     
     if (!this.config.enableCallouts) {
@@ -346,22 +360,31 @@ export class ObsidianFormatter {
     }
     
     // Enhanced approach: detect HTML elements first, then convert to markdown
+    console.log('🔍 === STARTING CALLOUT DETECTION ===');
     let processedHtml = this.detectAndReplaceCallouts(html);
+    console.log('🔄 HTML processed for callouts');
     
     // Convert to markdown
+    console.log('📝 === CONVERTING TO MARKDOWN ===');
     let markdown = this.turndownService.turndown(processedHtml);
+    console.log('📜 Initial markdown length:', markdown.length);
     
     // Post-process markdown to add callouts based on text patterns
+    console.log('🔍 === ENHANCING WITH TEXT CALLOUTS ===');
     markdown = this.enhanceWithCallouts(markdown);
+    console.log('🔄 Text patterns processed');
     
     // Replace callout markers with actual callouts
+    console.log('🔄 === REPLACING CALLOUT MARKERS ===');
     markdown = this.replaceCalloutMarkers(markdown);
+    console.log('🏁 Final markdown length:', markdown.trim().length);
     
+    console.log('🏆 === OBSIDIAN FORMATTING COMPLETE ===\n');
     return markdown.trim();
   }
   
   /**
-   * Analyze HTML structure to understand HTB Academy content patterns
+   * Analyze ALL HTML tags in the content to understand structure
    */
   public analyzeHtmlStructure(html: string): HtmlDebugInfo {
     const $ = cheerio.load(html);
@@ -372,18 +395,56 @@ export class ObsidianFormatter {
       summary: ''
     };
     
-    // Analyze native HTML tags that commonly contain callout content
-    const nativeTagAnalysis = [
-      // Block elements that often contain special content
-      'blockquote', 'aside', 'details', 'summary',
-      // Semantic elements
-      'section', 'article', 'header', 'footer', 'main',
-      // List elements that might contain structured info
-      'ul', 'ol', 'dl', 'dt', 'dd',
-      // Emphasis and strong elements with specific patterns
-      'strong', 'em', 'b', 'i', 'mark',
-      // Div elements (most common container)
-      'div', 'span', 'p'
+    // Count ALL tags in the HTML - not just specific ones
+    const tagCounts: { [tag: string]: number } = {};
+    const tagExamples: { [tag: string]: string[] } = {};
+    
+    $('*').each((_, element) => {
+      // Ensure element has tagName property (is an Element, not Document)
+      if (!('tagName' in element)) return;
+      
+      const tagName = element.tagName.toLowerCase();
+      
+      // Count occurrences
+      tagCounts[tagName] = (tagCounts[tagName] || 0) + 1;
+      
+      // Store examples (max 2 per tag)
+      if (!tagExamples[tagName]) {
+        tagExamples[tagName] = [];
+      }
+      
+      if (tagExamples[tagName].length < 2) {
+        const $el = $(element);
+        const text = $el.text().trim();
+        const classes = $el.attr('class') || '';
+        const id = $el.attr('id') || '';
+        
+        let example = `<${tagName}`;
+        if (classes) example += ` class="${classes}"`;
+        if (id) example += ` id="${id}"`;
+        example += `> ${text.substring(0, 100)}...`;
+        
+        tagExamples[tagName].push(example);
+      }
+    });
+    
+    // Log ALL tags found
+    console.log('🏷️ ALL HTML Tags Analysis:');
+    Object.entries(tagCounts)
+      .sort(([,a], [,b]) => b - a) // Sort by count descending
+      .forEach(([tag, count]) => {
+        console.log(`  ${tag}: ${count} elements`);
+        tagExamples[tag]?.forEach(example => {
+          console.log(`    Example: ${example}`);
+        });
+      });
+    
+    // Analyze important semantic tags specifically
+    const importantTags = [
+      'code', 'pre', 'blockquote', 'aside', 'details', 'summary',
+      'table', 'th', 'td', 'ul', 'ol', 'li',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'strong', 'em', 'b', 'i', 'mark'
     ];
     
     // Test all possible selectors that might contain callouts
@@ -423,6 +484,7 @@ export class ObsidianFormatter {
     
     // First, analyze the native HTML structure
     console.log('🔍 Native HTML Tag Analysis:');
+    const nativeTagAnalysis = ['code', 'pre', 'blockquote', 'aside', 'details', 'summary', 'table', 'th', 'td'];
     nativeTagAnalysis.forEach(tag => {
       const elements = $(tag);
       if (elements.length > 0) {
@@ -690,57 +752,84 @@ export class ObsidianFormatter {
   private detectAndReplaceCallouts(html: string): string {
     const $ = cheerio.load(html);
     
-    // Native HTML tag-based callout patterns (more reliable)
-    const nativeTagPatterns = [
-      // Semantic HTML elements that naturally represent callouts
-      { selector: 'blockquote', type: 'quote' },
-      { selector: 'aside', type: 'note' },
-      { selector: 'details', type: 'example' },
-      { selector: 'summary', type: 'abstract' },
+    console.log('🔄 Starting callout detection...');
+    
+    // Simple tag-based patterns - convert common HTML tags to callouts
+    const simpleTagPatterns = [
+      // Code blocks - très important pour HTB Academy
+      { selector: 'pre', type: 'code', description: 'Code blocks' },
+      { selector: 'code', type: 'code', description: 'Inline code' },
       
+      // Semantic HTML elements 
+      { selector: 'blockquote', type: 'quote', description: 'Blockquotes' },
+      { selector: 'aside', type: 'note', description: 'Aside content' },
+      { selector: 'details', type: 'example', description: 'Details/collapsible' },
+      { selector: 'summary', type: 'abstract', description: 'Summary headers' },
+      
+      // Tables - convertir en callouts si petites
+      { selector: 'table', type: 'info', description: 'Tables' },
+      
+      // Strong emphasis that might be callouts
+      { selector: 'strong', type: 'note', description: 'Strong emphasis' },
     ];
     
     // HTB Academy CSS class-based patterns (fallback)
     const cssClassPatterns = [
       // Common alert/info boxes
-      { selector: '.alert, .alert-info, .info-box, .note-info', type: 'info' },
-      { selector: '.alert-warning, .warning-box, .note-warning', type: 'warning' },
-      { selector: '.alert-danger, .danger-box, .alert-error', type: 'warning' },
-      { selector: '.alert-success, .success-box', type: 'note' },
+      { selector: '.alert, .alert-info, .info-box, .note-info', type: 'info', description: 'Alert info boxes' },
+      { selector: '.alert-warning, .warning-box, .note-warning', type: 'warning', description: 'Alert warning boxes' },
+      { selector: '.alert-danger, .danger-box, .alert-error', type: 'warning', description: 'Alert danger boxes' },
+      { selector: '.alert-success, .success-box', type: 'note', description: 'Alert success boxes' },
       
       // Exercise and example boxes
-      { selector: '.exercise, .example-box, .practice-box', type: 'example' },
-      { selector: '.task, .challenge, .lab', type: 'example' },
+      { selector: '.exercise, .example-box, .practice-box', type: 'example', description: 'Exercise boxes' },
+      { selector: '.task, .challenge, .lab', type: 'example', description: 'Task/challenge boxes' },
       
       // Note and tip boxes
-      { selector: '.note, .tip, .hint', type: 'note' },
-      { selector: '.important, .highlight', type: 'note' },
+      { selector: '.note, .tip, .hint', type: 'note', description: 'Note/tip boxes' },
+      { selector: '.important, .highlight', type: 'note', description: 'Important/highlight boxes' },
       
       // Abstract/summary boxes
-      { selector: '.summary, .abstract, .overview', type: 'abstract' },
+      { selector: '.summary, .abstract, .overview', type: 'abstract', description: 'Summary/abstract boxes' },
       
       // Generic patterns with class names containing keywords
-      { selector: '[class*="info"]', type: 'info' },
-      { selector: '[class*="warning"]', type: 'warning' },
-      { selector: '[class*="danger"]', type: 'warning' },
-      { selector: '[class*="error"]', type: 'warning' },
-      { selector: '[class*="note"]', type: 'note' },
-      { selector: '[class*="tip"]', type: 'note' },
-      { selector: '[class*="example"]', type: 'example' },
-      { selector: '[class*="exercise"]', type: 'example' },
-      { selector: '[class*="task"]', type: 'example' },
-      { selector: '[class*="practice"]', type: 'example' },
-      { selector: '[class*="summary"]', type: 'abstract' },
-      { selector: '[class*="abstract"]', type: 'abstract' },
+      { selector: '[class*="info"]', type: 'info', description: 'Generic info classes' },
+      { selector: '[class*="warning"]', type: 'warning', description: 'Generic warning classes' },
+      { selector: '[class*="danger"]', type: 'warning', description: 'Generic danger classes' },
+      { selector: '[class*="error"]', type: 'warning', description: 'Generic error classes' },
+      { selector: '[class*="note"]', type: 'note', description: 'Generic note classes' },
+      { selector: '[class*="tip"]', type: 'note', description: 'Generic tip classes' },
+      { selector: '[class*="example"]', type: 'example', description: 'Generic example classes' },
+      { selector: '[class*="exercise"]', type: 'example', description: 'Generic exercise classes' },
+      { selector: '[class*="task"]', type: 'example', description: 'Generic task classes' },
+      { selector: '[class*="practice"]', type: 'example', description: 'Generic practice classes' },
+      { selector: '[class*="summary"]', type: 'abstract', description: 'Generic summary classes' },
+      { selector: '[class*="abstract"]', type: 'abstract', description: 'Generic abstract classes' },
     ];
     
     // Combine patterns: native tags first (more reliable), then CSS classes
-    const allPatterns = [...nativeTagPatterns, ...cssClassPatterns];
+    const allPatterns = [...simpleTagPatterns, ...cssClassPatterns];
     
-    // Process native tag patterns first
-    allPatterns.forEach(({ selector, type }) => {
+    // Process native tag patterns first - add logging for detection
+    console.log('📝 Processing tag patterns for callout detection:');
+    let totalDetectedElements = 0;
+    
+    allPatterns.forEach(({ selector, type, description }) => {
       const elements = $(selector);
+      if (elements.length > 0) {
+        console.log(`🎯 Found ${elements.length} ${description || selector} elements (type: ${type})`);
+        totalDetectedElements += elements.length;
+        
+        // Show example content for first element
+        const firstEl = elements.first();
+        if (firstEl.length > 0) {
+          const text = firstEl.text().trim();
+          const classes = firstEl.attr('class') || 'no-class';
+          console.log(`  Example: ${selector} class="${classes}" - "${text.substring(0, 60)}..."`);
+        }
+      }
       
+      // Now process each element
       elements.each((_, element) => {
         const $element = $(element);
         const content = $element.html();
@@ -774,6 +863,10 @@ export class ObsidianFormatter {
     
     // Now process text-based patterns manually
     this.processTextBasedCallouts($);
+    
+    // Final logging summary
+    console.log(`📊 Total elements processed for callout detection: ${totalDetectedElements}`);
+    console.log(`🔄 Callout replacements created: ${this.calloutReplacements.size}`);
     
     return $.html() || html;
   }
