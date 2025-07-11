@@ -7,9 +7,26 @@ export interface ObsidianFormatterConfig {
   enableCodeBlocks: boolean;
   enableTables: boolean;
   useAdmonitions: boolean; // Use Admonitions plugin syntax instead of native callouts
+  interactiveCallouts: boolean; // Enable interactive callout suggestion system
   calloutMapping: {
     [key: string]: string;
   };
+}
+
+export interface CalloutSuggestion {
+  id: string;
+  content: string;
+  htmlContent: string;
+  position: number;
+  suggestedTypes: string[];
+  confidence: number;
+  context: string;
+}
+
+export interface CalloutChoice {
+  suggestionId: string;
+  calloutType: string;
+  applied: boolean;
 }
 
 export interface ContentSection {
@@ -30,6 +47,7 @@ export class ObsidianFormatter {
       enableCodeBlocks: true,
       enableTables: true,
       useAdmonitions: false, // Default to native callouts
+      interactiveCallouts: false, // Default to automatic callouts
       calloutMapping: {
         'info': 'info',
         'note': 'note',
@@ -288,13 +306,280 @@ export class ObsidianFormatter {
       return result;
     }
     
-    // Simple and effective approach: convert to markdown first, then enhance
-    let markdown = this.turndownService.turndown(html);
+    // Check if interactive callouts are enabled
+    if (this.config.interactiveCallouts) {
+      // For interactive mode, just convert to markdown and return suggestions separately
+      const markdown = this.turndownService.turndown(html);
+      return markdown.trim();
+    }
+    
+    // Enhanced approach: detect HTML elements first, then convert to markdown
+    let processedHtml = this.detectAndReplaceCallouts(html);
+    
+    // Convert to markdown
+    let markdown = this.turndownService.turndown(processedHtml);
     
     // Post-process markdown to add callouts based on text patterns
     markdown = this.enhanceWithCallouts(markdown);
     
+    // Replace callout markers with actual callouts
+    markdown = this.replaceCalloutMarkers(markdown);
+    
     return markdown.trim();
+  }
+  
+  /**
+   * Analyze content and generate callout suggestions for interactive mode
+   */
+  public generateCalloutSuggestions(html: string): CalloutSuggestion[] {
+    const $ = cheerio.load(html);
+    const suggestions: CalloutSuggestion[] = [];
+    
+    // Find potential callout candidates
+    const candidates = this.findCalloutCandidates($);
+    
+    candidates.forEach((candidate, index) => {
+      const suggestion: CalloutSuggestion = {
+        id: `suggestion-${index}`,
+        content: candidate.text,
+        htmlContent: candidate.html,
+        position: candidate.position,
+        suggestedTypes: this.suggestCalloutTypes(candidate.text),
+        confidence: this.calculateConfidence(candidate.text),
+        context: candidate.context
+      };
+      
+      suggestions.push(suggestion);
+    });
+    
+    return suggestions;
+  }
+  
+  /**
+   * Apply user-selected callout choices to markdown
+   */
+  public applyCalloutChoices(markdown: string, choices: CalloutChoice[]): string {
+    // Sort choices by position (descending) to avoid position shifts
+    const sortedChoices = choices
+      .filter(choice => choice.applied)
+      .sort((a, b) => b.suggestionId.localeCompare(a.suggestionId));
+    
+    let result = markdown;
+    
+    sortedChoices.forEach(choice => {
+      const calloutType = this.config.calloutMapping[choice.calloutType] || choice.calloutType;
+      
+      // Find the corresponding suggestion and replace it with a callout
+      // This is a simplified implementation - you'd need more sophisticated text matching
+      const calloutContent = this.config.useAdmonitions
+        ? `\n\`\`\`ad-${calloutType}\n{CONTENT}\n\`\`\`\n`
+        : `\n> [!${calloutType}]\n> {CONTENT}\n`;
+      
+      // Replace placeholder with actual content
+      result = result.replace('{CONTENT}', result);
+    });
+    
+    return result;
+  }
+  
+  private findCalloutCandidates($: cheerio.CheerioAPI): Array<{ text: string; html: string; position: number; context: string }> {
+    const candidates: Array<{ text: string; html: string; position: number; context: string }> = [];
+    
+    // Look for paragraphs and divs that might contain callout-worthy content
+    $('p, div').each((index, element) => {
+      const $element = $(element);
+      const text = $element.text().trim();
+      const html = $element.html() || '';
+      
+      // Skip if too short or likely not a callout
+      if (text.length < 10 || text.length > 500) {
+        return;
+      }
+      
+      // Look for keywords that suggest this might be a callout
+      const calloutIndicators = [
+        'note', 'important', 'warning', 'caution', 'tip', 'hint',
+        'example', 'exercise', 'task', 'practice', 'remember',
+        'attention', 'info', 'information', 'alert', 'danger'
+      ];
+      
+      const hasCalloutIndicator = calloutIndicators.some(indicator => 
+        text.toLowerCase().includes(indicator)
+      );
+      
+      // Check for emphasis patterns
+      const hasEmphasis = html.includes('<strong>') || html.includes('<em>') || html.includes('<b>');
+      
+      // Check for list-like structure
+      const isList = text.includes('•') || text.includes('-') || text.includes('*');
+      
+      if (hasCalloutIndicator || hasEmphasis || isList) {
+        candidates.push({
+          text,
+          html,
+          position: index,
+          context: $element.parent().text().substring(0, 100)
+        });
+      }
+    });
+    
+    return candidates;
+  }
+  
+  private suggestCalloutTypes(text: string): string[] {
+    const lowerText = text.toLowerCase();
+    const suggestions: string[] = [];
+    
+    // Analyze content to suggest appropriate callout types
+    if (lowerText.includes('note') || lowerText.includes('important') || lowerText.includes('remember')) {
+      suggestions.push('note');
+    }
+    
+    if (lowerText.includes('warning') || lowerText.includes('caution') || lowerText.includes('danger')) {
+      suggestions.push('warning');
+    }
+    
+    if (lowerText.includes('example') || lowerText.includes('exercise') || lowerText.includes('practice')) {
+      suggestions.push('example');
+    }
+    
+    if (lowerText.includes('info') || lowerText.includes('information') || lowerText.includes('details')) {
+      suggestions.push('info');
+    }
+    
+    if (lowerText.includes('tip') || lowerText.includes('hint') || lowerText.includes('suggestion')) {
+      suggestions.push('tip');
+    }
+    
+    if (lowerText.includes('summary') || lowerText.includes('conclusion') || lowerText.includes('overview')) {
+      suggestions.push('abstract');
+    }
+    
+    // Default suggestions if no specific type detected
+    if (suggestions.length === 0) {
+      suggestions.push('note', 'info', 'example');
+    }
+    
+    return suggestions;
+  }
+  
+  private calculateConfidence(text: string): number {
+    const lowerText = text.toLowerCase();
+    let confidence = 0.3; // Base confidence
+    
+    // Keywords that increase confidence
+    const strongIndicators = ['note:', 'warning:', 'important:', 'example:', 'tip:'];
+    const mediumIndicators = ['note', 'warning', 'important', 'example', 'tip', 'remember'];
+    
+    if (strongIndicators.some(indicator => lowerText.includes(indicator))) {
+      confidence += 0.4;
+    } else if (mediumIndicators.some(indicator => lowerText.includes(indicator))) {
+      confidence += 0.2;
+    }
+    
+    // Length affects confidence
+    if (text.length > 50 && text.length < 200) {
+      confidence += 0.1;
+    }
+    
+    return Math.min(confidence, 1.0);
+  }
+  
+  private detectAndReplaceCallouts(html: string): string {
+    const $ = cheerio.load(html);
+    
+    // HTB Academy specific callout patterns
+    const calloutPatterns = [
+      // Common alert/info boxes
+      { selector: '.alert, .alert-info, .info-box, .note-info', type: 'info' },
+      { selector: '.alert-warning, .warning-box, .note-warning', type: 'warning' },
+      { selector: '.alert-danger, .danger-box, .alert-error', type: 'warning' },
+      { selector: '.alert-success, .success-box', type: 'note' },
+      
+      // Exercise and example boxes
+      { selector: '.exercise, .example-box, .practice-box', type: 'example' },
+      { selector: '.task, .challenge, .lab', type: 'example' },
+      
+      // Note and tip boxes
+      { selector: '.note, .tip, .hint', type: 'note' },
+      { selector: '.important, .highlight', type: 'note' },
+      
+      // Abstract/summary boxes
+      { selector: '.summary, .abstract, .overview', type: 'abstract' },
+      
+      // Generic patterns with class names containing keywords
+      { selector: '[class*="info"]', type: 'info' },
+      { selector: '[class*="warning"]', type: 'warning' },
+      { selector: '[class*="danger"]', type: 'warning' },
+      { selector: '[class*="error"]', type: 'warning' },
+      { selector: '[class*="note"]', type: 'note' },
+      { selector: '[class*="tip"]', type: 'note' },
+      { selector: '[class*="example"]', type: 'example' },
+      { selector: '[class*="exercise"]', type: 'example' },
+      { selector: '[class*="task"]', type: 'example' },
+      { selector: '[class*="practice"]', type: 'example' },
+      { selector: '[class*="summary"]', type: 'abstract' },
+      { selector: '[class*="abstract"]', type: 'abstract' },
+    ];
+    
+    // Process each pattern
+    calloutPatterns.forEach(({ selector, type }) => {
+      const elements = $(selector);
+      
+      elements.each((_, element) => {
+        const $element = $(element);
+        const content = $element.html();
+        
+        // Skip if empty or already processed
+        if (!content || content.trim().length === 0 || $element.hasClass('processed-callout')) {
+          return;
+        }
+        
+        // Skip if it's a nested element that's already been processed
+        if ($element.closest('.processed-callout').length > 0) {
+          return;
+        }
+        
+        const calloutType = this.config.calloutMapping[type] || 'note';
+        
+        // Create callout marker
+        const calloutMarker = `__CALLOUT_${type.toUpperCase()}_${Math.random().toString(36).substr(2, 9)}__`;
+        
+        // Store the raw HTML content for later processing
+        // Replace the element with a marker
+        $element.replaceWith(`<div class="callout-placeholder">${calloutMarker}</div>`);
+        
+        // Store the mapping for later replacement
+        if (!this.calloutReplacements) {
+          this.calloutReplacements = new Map();
+        }
+        this.calloutReplacements.set(calloutMarker, { content, type: calloutType });
+      });
+    });
+    
+    return $.html() || html;
+  }
+  
+  private calloutReplacements: Map<string, { content: string; type: string }> = new Map();
+  
+  private replaceCalloutMarkers(markdown: string): string {
+    // Replace all callout markers with their actual callout content
+    this.calloutReplacements.forEach((calloutData, marker) => {
+      // Convert the HTML content to markdown first
+      const markdownContent = this.turndownService.turndown(calloutData.content);
+      
+      // Create the final callout
+      const finalCallout = this.config.useAdmonitions
+        ? `\n\`\`\`ad-${calloutData.type}\n${markdownContent.trim()}\n\`\`\`\n`
+        : `\n> [!${calloutData.type}]\n> ${markdownContent.replace(/\n/g, '\n> ')}\n`;
+      
+      markdown = markdown.replace(marker, finalCallout);
+    });
+    
+    // Clear the replacements for next use
+    this.calloutReplacements.clear();
+    
+    return markdown;
   }
   
   private enhanceWithCallouts(markdown: string): string {
