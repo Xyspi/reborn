@@ -20,6 +20,7 @@ export interface ScrapingConfig {
   };
   obsidianFormat?: boolean;
   obsidianConfig?: Partial<ObsidianFormatterConfig>;
+  obsidianVaultPath?: string; // Path to Obsidian vault directory
 }
 
 export interface ScrapingProgress {
@@ -180,7 +181,15 @@ export class ScraperService extends EventEmitter {
       
       // Update ObsidianFormatter configuration if provided
       if (this.currentConfig.obsidianConfig) {
-        this.obsidianFormatter = new ObsidianFormatter(this.currentConfig.obsidianConfig);
+        this.obsidianFormatter = new ObsidianFormatter({
+          useAdmonitions: true, // Enable Admonitions by default
+          ...this.currentConfig.obsidianConfig
+        });
+      } else {
+        // Use default config with Admonitions enabled
+        this.obsidianFormatter = new ObsidianFormatter({
+          useAdmonitions: true
+        });
       }
       
       markdownContent = this.obsidianFormatter.formatAsObsidian(htmlContent);
@@ -210,10 +219,25 @@ export class ScraperService extends EventEmitter {
         case 'markdown':
         case 'md':
           let finalContent = content;
+          let finalOutputDir = outputDir;
           
           // Apply Obsidian-specific formatting if enabled
           if (this.currentConfig?.obsidianFormat) {
+            // Update ObsidianFormatter configuration if provided
+            if (this.currentConfig.obsidianConfig) {
+              this.obsidianFormatter = new ObsidianFormatter({
+                useAdmonitions: true, // Enable Admonitions by default
+                ...this.currentConfig.obsidianConfig
+              });
+            } else {
+              // Use default config with Admonitions enabled
+              this.obsidianFormatter = new ObsidianFormatter({
+                useAdmonitions: true
+              });
+            }
+            
             const formattedTitle = this.obsidianFormatter.formatTitle(title);
+            // Note: content is already markdown from formatAsObsidian in downloadPage
             finalContent = this.obsidianFormatter.formatHeaders(content);
             
             // Add metadata if available
@@ -227,12 +251,19 @@ export class ScraperService extends EventEmitter {
               `${formattedTitle}\n\n${finalContent}`,
               metadata
             );
+            
+            // Use Obsidian vault path if specified
+            if (this.currentConfig.obsidianVaultPath) {
+              finalOutputDir = this.currentConfig.obsidianVaultPath;
+              // Ensure vault directory exists
+              await fs.mkdir(finalOutputDir, { recursive: true });
+            }
           } else {
             finalContent = `# ${title}\n\n${content}`;
           }
           
           await fs.writeFile(
-            join(outputDir, `${filename}.md`),
+            join(finalOutputDir, `${filename}.md`),
             finalContent,
             'utf8'
           );

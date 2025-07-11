@@ -6,6 +6,7 @@ export interface ObsidianFormatterConfig {
   enableWikilinks: boolean;
   enableCodeBlocks: boolean;
   enableTables: boolean;
+  useAdmonitions: boolean; // Use Admonitions plugin syntax instead of native callouts
   calloutMapping: {
     [key: string]: string;
   };
@@ -28,6 +29,7 @@ export class ObsidianFormatter {
       enableWikilinks: true,
       enableCodeBlocks: true,
       enableTables: true,
+      useAdmonitions: false, // Default to native callouts
       calloutMapping: {
         'info': 'info',
         'note': 'note',
@@ -286,52 +288,87 @@ export class ObsidianFormatter {
       return result;
     }
     
-    // New approach: Transform HTML in-place by replacing special elements with callouts
-    let transformedHtml = html;
-    const $ = cheerio.load(html);
+    // Simple and effective approach: convert to markdown first, then enhance
+    let markdown = this.turndownService.turndown(html);
     
-    // Transform special sections to temporary markers
+    // Post-process markdown to add callouts based on text patterns
+    markdown = this.enhanceWithCallouts(markdown);
+    
+    return markdown.trim();
+  }
+  
+  private enhanceWithCallouts(markdown: string): string {
+    // Convert text patterns to callouts
     const patterns = [
-      { selector: '.alert-info, .info-box, .note-info, .callout-info, [class*="info"]', type: 'info' as const },
-      { selector: '.alert-warning, .warning-box, .note-warning, .callout-warning, [class*="warning"]', type: 'warning' as const },
-      { selector: '.alert-example, .example-box, .exercise, .callout-example, [class*="example"], [class*="exercise"]', type: 'example' as const },
-      { selector: '.abstract, .summary, .overview, .callout-abstract, [class*="abstract"], [class*="summary"]', type: 'abstract' as const },
-      { selector: '.note, .important, .tip, .callout-note, [class*="important"], [class*="note"]', type: 'note' as const }
+      // HTB Academy specific patterns
+      { pattern: /^(Note|Important|Tip|Hint):\s*(.+)$/gmi, type: 'note' },
+      { pattern: /^(Warning|Caution|Danger|Alert):\s*(.+)$/gmi, type: 'warning' },
+      { pattern: /^(Example|Exercise|Task|Practice):\s*(.+)$/gmi, type: 'example' },
+      { pattern: /^(Summary|Abstract|Overview|Conclusion):\s*(.+)$/gmi, type: 'abstract' },
+      { pattern: /^(Info|Information|Details):\s*(.+)$/gmi, type: 'info' },
+      
+      // Look for bold/emphasized introductory words
+      { pattern: /^\*\*(Note|Important|Tip|Hint)\*\*:\s*(.+)$/gmi, type: 'note' },
+      { pattern: /^\*\*(Warning|Caution|Danger|Alert)\*\*:\s*(.+)$/gmi, type: 'warning' },
+      { pattern: /^\*\*(Example|Exercise|Task|Practice)\*\*:\s*(.+)$/gmi, type: 'example' },
+      { pattern: /^\*\*(Summary|Abstract|Overview|Conclusion)\*\*:\s*(.+)$/gmi, type: 'abstract' },
+      { pattern: /^\*\*(Info|Information|Details)\*\*:\s*(.+)$/gmi, type: 'info' },
     ];
     
-    const calloutReplacements: { marker: string, callout: string }[] = [];
-    
-    patterns.forEach(({ selector, type }, patternIndex) => {
-      const elements = $(selector);
-      
-      elements.each((elementIndex, element) => {
-        const content = $(element).html() || '';
-        if (content.trim().length === 0) return;
-        
-        const marker = `__OBSIDIAN_CALLOUT_${patternIndex}_${elementIndex}__`;
+    // Apply pattern transformations
+    patterns.forEach(({ pattern, type }) => {
+      markdown = markdown.replace(pattern, (match, label, content) => {
         const calloutType = this.config.calloutMapping[type] || 'note';
-        const calloutContent = this.turndownService.turndown(content);
-        const callout = `\n> [!${calloutType}]\n> ${calloutContent.replace(/\n/g, '\n> ')}\n`;
         
-        calloutReplacements.push({ marker, callout });
-        $(element).replaceWith(marker);
-        
+        if (this.config.useAdmonitions) {
+          // Use Admonitions plugin syntax
+          return `\n\`\`\`ad-${calloutType}\n${content.trim()}\n\`\`\`\n`;
+        } else {
+          // Use native Obsidian callout syntax
+          return `\n> [!${calloutType}]\n> ${content.trim()}\n`;
+        }
       });
     });
     
-    // Convert the transformed HTML to markdown
-    transformedHtml = $.html() || '';
-    let markdown = this.turndownService.turndown(transformedHtml);
+    // Look for paragraphs that start with common callout words
+    const lines = markdown.split('\n');
+    const enhancedLines: string[] = [];
     
-    // Replace markers with actual callouts (handle escaped underscores)
-    calloutReplacements.forEach(({ marker, callout }) => {
-      const escapedMarker = marker.replace(/_/g, '\\_');
-      markdown = markdown.replace(new RegExp(escapedMarker.replace(/\\/g, '\\\\'), 'g'), callout);
-      markdown = markdown.replace(new RegExp(marker, 'g'), callout);
-    });
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Check if this line starts with a callout keyword
+      const calloutMatch = line.match(/^(Note|Important|Tip|Hint|Warning|Caution|Example|Exercise|Info|Summary):\s*(.+)$/i);
+      
+      if (calloutMatch) {
+        const [, keyword, content] = calloutMatch;
+        let type = 'note';
+        
+        if (['warning', 'caution', 'danger', 'alert'].includes(keyword.toLowerCase())) {
+          type = 'warning';
+        } else if (['example', 'exercise', 'task', 'practice'].includes(keyword.toLowerCase())) {
+          type = 'example';
+        } else if (['summary', 'abstract', 'overview', 'conclusion'].includes(keyword.toLowerCase())) {
+          type = 'abstract';
+        } else if (['info', 'information', 'details'].includes(keyword.toLowerCase())) {
+          type = 'info';
+        }
+        
+        const calloutType = this.config.calloutMapping[type] || 'note';
+        
+        if (this.config.useAdmonitions) {
+          // Use Admonitions plugin syntax
+          enhancedLines.push(`\n\`\`\`ad-${calloutType}\n${content.trim()}\n\`\`\`\n`);
+        } else {
+          // Use native Obsidian callout syntax
+          enhancedLines.push(`\n> [!${calloutType}]\n> ${content.trim()}\n`);
+        }
+      } else {
+        enhancedLines.push(line);
+      }
+    }
     
-    
-    return markdown.trim();
+    return enhancedLines.join('\n');
   }
 
   private createCallout(section: ContentSection): string {
@@ -363,7 +400,12 @@ export class ObsidianFormatter {
 
   public addObsidianMetadata(content: string, metadata: any = {}): string {
     const frontmatter = Object.entries(metadata)
-      .map(([key, value]) => `${key}: ${value}`)
+      .map(([key, value]) => {
+        if (Array.isArray(value)) {
+          return `${key}: [${value.join(', ')}]`;
+        }
+        return `${key}: ${value}`;
+      })
       .join('\n');
     
     if (frontmatter) {
