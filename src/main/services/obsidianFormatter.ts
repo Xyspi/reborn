@@ -1,5 +1,7 @@
 import TurndownService from 'turndown';
 import * as cheerio from 'cheerio';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 
 export interface ObsidianFormatterConfig {
   enableCallouts: boolean;
@@ -8,9 +10,28 @@ export interface ObsidianFormatterConfig {
   enableTables: boolean;
   useAdmonitions: boolean; // Use Admonitions plugin syntax instead of native callouts
   interactiveCallouts: boolean; // Enable interactive callout suggestion system
+  debugMode: boolean; // Enable debug logging for HTML analysis
   calloutMapping: {
     [key: string]: string;
   };
+}
+
+export interface HtmlDebugInfo {
+  totalElements: number;
+  potentialCallouts: Array<{
+    selector: string;
+    count: number;
+    examples: Array<{
+      classes: string;
+      text: string;
+      html: string;
+    }>;
+  }>;
+  textPatterns: Array<{
+    pattern: string;
+    matches: string[];
+  }>;
+  summary: string;
 }
 
 export interface CalloutSuggestion {
@@ -48,6 +69,7 @@ export class ObsidianFormatter {
       enableTables: true,
       useAdmonitions: false, // Default to native callouts
       interactiveCallouts: false, // Default to automatic callouts
+      debugMode: false, // Default to no debug
       calloutMapping: {
         'info': 'info',
         'note': 'note',
@@ -301,6 +323,15 @@ export class ObsidianFormatter {
 
   public formatAsObsidian(html: string): string {
     
+    // Debug mode: analyze HTML structure first
+    if (this.config.debugMode) {
+      const debugInfo = this.analyzeHtmlStructure(html);
+      console.log('🔍 HTB Academy HTML Analysis:', JSON.stringify(debugInfo, null, 2));
+      
+      // Save debug info to file for analysis (transparent to user)
+      this.saveDebugInfo(debugInfo);
+    }
+    
     if (!this.config.enableCallouts) {
       const result = this.turndownService.turndown(html);
       return result;
@@ -326,6 +357,118 @@ export class ObsidianFormatter {
     markdown = this.replaceCalloutMarkers(markdown);
     
     return markdown.trim();
+  }
+  
+  /**
+   * Analyze HTML structure to understand HTB Academy content patterns
+   */
+  public analyzeHtmlStructure(html: string): HtmlDebugInfo {
+    const $ = cheerio.load(html);
+    const debugInfo: HtmlDebugInfo = {
+      totalElements: $('*').length,
+      potentialCallouts: [],
+      textPatterns: [],
+      summary: ''
+    };
+    
+    // Test all possible selectors that might contain callouts
+    const testSelectors = [
+      // Bootstrap/common alert patterns
+      '.alert', '.alert-info', '.alert-warning', '.alert-danger', '.alert-success',
+      '.alert-primary', '.alert-secondary', '.alert-light', '.alert-dark',
+      
+      // HTB Academy specific patterns (guessing based on common patterns)
+      '.note', '.note-info', '.note-warning', '.note-danger', '.note-success',
+      '.info', '.info-box', '.info-card', '.info-section',
+      '.warning', '.warning-box', '.warning-card', '.warning-section',
+      '.example', '.example-box', '.example-card', '.example-section',
+      '.exercise', '.exercise-box', '.exercise-card', '.exercise-section',
+      '.tip', '.tip-box', '.tip-card', '.tip-section',
+      '.important', '.important-box', '.important-card', '.important-section',
+      
+      // Generic patterns
+      '.box', '.card', '.panel', '.section', '.container',
+      '.highlight', '.emphasis', '.special', '.callout',
+      
+      // Attribute-based patterns
+      '[class*="info"]', '[class*="warning"]', '[class*="note"]',
+      '[class*="alert"]', '[class*="example"]', '[class*="exercise"]',
+      '[class*="tip"]', '[class*="important"]', '[class*="highlight"]',
+      
+      // Role-based patterns
+      '[role="alert"]', '[role="note"]', '[role="complementary"]',
+      
+      // Data attributes
+      '[data-type="info"]', '[data-type="warning"]', '[data-type="note"]',
+      '[data-callout]', '[data-alert]'
+    ];
+    
+    testSelectors.forEach(selector => {
+      try {
+        const elements = $(selector);
+        if (elements.length > 0) {
+          const examples: Array<{ classes: string; text: string; html: string }> = [];
+          
+          elements.each((i, el) => {
+            if (i < 3) { // Limit to first 3 examples
+              const $el = $(el);
+              const text = $el.text().trim();
+              const html = $el.html() || '';
+              const classes = $el.attr('class') || '';
+              
+              if (text.length > 0 && text.length < 300) {
+                examples.push({
+                  classes,
+                  text: text.substring(0, 150),
+                  html: html.substring(0, 200)
+                });
+              }
+            }
+          });
+          
+          if (examples.length > 0) {
+            debugInfo.potentialCallouts.push({
+              selector,
+              count: elements.length,
+              examples
+            });
+          }
+        }
+      } catch (error) {
+        // Skip invalid selectors
+      }
+    });
+    
+    // Look for text patterns that might indicate callouts
+    const textPatterns = [
+      { pattern: 'Note:', regex: /\bNote:\s*(.+)/gi },
+      { pattern: 'Warning:', regex: /\bWarning:\s*(.+)/gi },
+      { pattern: 'Important:', regex: /\bImportant:\s*(.+)/gi },
+      { pattern: 'Example:', regex: /\bExample:\s*(.+)/gi },
+      { pattern: 'Exercise:', regex: /\bExercise:\s*(.+)/gi },
+      { pattern: 'Tip:', regex: /\bTip:\s*(.+)/gi },
+      { pattern: 'Alert:', regex: /\bAlert:\s*(.+)/gi },
+      { pattern: 'Info:', regex: /\bInfo:\s*(.+)/gi }
+    ];
+    
+    const fullText = $.text();
+    textPatterns.forEach(({ pattern, regex }) => {
+      const matches = Array.from(fullText.matchAll(regex));
+      if (matches.length > 0) {
+        debugInfo.textPatterns.push({
+          pattern,
+          matches: matches.map(m => m[1]?.substring(0, 100) || '').slice(0, 5)
+        });
+      }
+    });
+    
+    // Generate summary
+    const totalCallouts = debugInfo.potentialCallouts.reduce((sum, item) => sum + item.count, 0);
+    const totalTextPatterns = debugInfo.textPatterns.reduce((sum, item) => sum + item.matches.length, 0);
+    
+    debugInfo.summary = `Found ${totalCallouts} potential HTML callouts and ${totalTextPatterns} text patterns in ${debugInfo.totalElements} total elements`;
+    
+    return debugInfo;
   }
   
   /**
@@ -483,6 +626,29 @@ export class ObsidianFormatter {
     }
     
     return Math.min(confidence, 1.0);
+  }
+  
+  /**
+   * Save debug information to file for analysis (transparent to user)
+   */
+  private async saveDebugInfo(debugInfo: HtmlDebugInfo): Promise<void> {
+    try {
+      // Create debug directory if it doesn't exist
+      const debugDir = join(process.cwd(), 'debug');
+      await fs.mkdir(debugDir, { recursive: true });
+      
+      // Create filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `htb-debug-${timestamp}.json`;
+      const filepath = join(debugDir, filename);
+      
+      // Save debug info as JSON
+      await fs.writeFile(filepath, JSON.stringify(debugInfo, null, 2), 'utf8');
+      
+      console.log(`📁 Debug info saved to: ${filepath}`);
+    } catch (error) {
+      console.warn('⚠️ Could not save debug info:', error);
+    }
   }
   
   private detectAndReplaceCallouts(html: string): string {

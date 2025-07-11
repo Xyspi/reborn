@@ -1,0 +1,136 @@
+{
+  "totalElements": 29,
+  "potentialCallouts": [
+    {
+      "selector": ".alert",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is an information box that should be detected.",
+          "html": "\n    <strong>Info:</strong> This is an information box that should be detected.\n  "
+        }
+      ]
+    },
+    {
+      "selector": ".alert-info",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is an information box that should be detected.",
+          "html": "\n    <strong>Info:</strong> This is an information box that should be detected.\n  "
+        }
+      ]
+    },
+    {
+      "selector": ".warning-box",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "warning-box",
+          "text": "Warning: This is a warning about potential security risks.",
+          "html": "\n    <p>Warning: This is a warning about potential security risks.</p>\n  "
+        }
+      ]
+    },
+    {
+      "selector": ".exercise",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "exercise",
+          "text": "Exercise\n    Complete the following practical exercise to test your understanding.",
+          "html": "\n    <h3>Exercise</h3>\n    <p>Complete the following practical exercise to test your understanding.</p>\n  "
+        }
+      ]
+    },
+    {
+      "selector": ".highlight",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "highlight",
+          "text": "This is highlighted content that might be important.",
+          "html": "\n    <p>This is highlighted content that might be important.</p>\n  "
+        }
+      ]
+    },
+    {
+      "selector": "[class*=\"info\"]",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is an information box that should be detected.",
+          "html": "\n    <strong>Info:</strong> This is an information box that should be detected.\n  "
+        }
+      ]
+    },
+    {
+      "selector": "[class*=\"warning\"]",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "warning-box",
+          "text": "Warning: This is a warning about potential security risks.",
+          "html": "\n    <p>Warning: This is a warning about potential security risks.</p>\n  "
+        }
+      ]
+    },
+    {
+      "selector": "[class*=\"alert\"]",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "alert alert-info",
+          "text": "Info: This is an information box that should be detected.",
+          "html": "\n    <strong>Info:</strong> This is an information box that should be detected.\n  "
+        }
+      ]
+    },
+    {
+      "selector": "[class*=\"exercise\"]",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "exercise",
+          "text": "Exercise\n    Complete the following practical exercise to test your understanding.",
+          "html": "\n    <h3>Exercise</h3>\n    <p>Complete the following practical exercise to test your understanding.</p>\n  "
+        }
+      ]
+    },
+    {
+      "selector": "[class*=\"highlight\"]",
+      "count": 1,
+      "examples": [
+        {
+          "classes": "highlight",
+          "text": "This is highlighted content that might be important.",
+          "html": "\n    <p>This is highlighted content that might be important.</p>\n  "
+        }
+      ]
+    }
+  ],
+  "textPatterns": [
+    {
+      "pattern": "Note:",
+      "matches": [
+        "This is a note that should be detected by text pattern matching."
+      ]
+    },
+    {
+      "pattern": "Warning:",
+      "matches": [
+        "This is a warning about potential security risks."
+      ]
+    },
+    {
+      "pattern": "Info:",
+      "matches": [
+        "This is an information box that should be detected."
+      ]
+    }
+  ],
+  "summary": "Found 10 potential HTML callouts and 3 text patterns in 29 total elements"
+}

@@ -183,12 +183,14 @@ export class ScraperService extends EventEmitter {
       if (this.currentConfig.obsidianConfig) {
         this.obsidianFormatter = new ObsidianFormatter({
           useAdmonitions: true, // Enable Admonitions by default
+          debugMode: true, // Enable debug mode to understand HTML structure
           ...this.currentConfig.obsidianConfig
         });
       } else {
         // Use default config with Admonitions enabled
         this.obsidianFormatter = new ObsidianFormatter({
-          useAdmonitions: true
+          useAdmonitions: true,
+          debugMode: true // Enable debug mode to understand HTML structure
         });
       }
       
@@ -227,12 +229,14 @@ export class ScraperService extends EventEmitter {
             if (this.currentConfig.obsidianConfig) {
               this.obsidianFormatter = new ObsidianFormatter({
                 useAdmonitions: true, // Enable Admonitions by default
+                debugMode: true, // Enable debug mode to understand HTML structure
                 ...this.currentConfig.obsidianConfig
               });
             } else {
               // Use default config with Admonitions enabled
               this.obsidianFormatter = new ObsidianFormatter({
-                useAdmonitions: true
+                useAdmonitions: true,
+                debugMode: true // Enable debug mode to understand HTML structure
               });
             }
             
