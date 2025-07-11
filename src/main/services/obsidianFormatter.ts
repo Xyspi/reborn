@@ -873,6 +873,8 @@ export class ObsidianFormatter {
           this.calloutReplacements = new Map();
         }
         this.calloutReplacements.set(calloutMarker, { content, type: calloutType });
+        console.log(`🔥 STORED CALLOUT: ${calloutMarker} -> ${calloutType}`);
+        console.log(`🔥 Content: ${content.substring(0, 100)}...`);
       });
     });
     
@@ -952,18 +954,40 @@ export class ObsidianFormatter {
   }
   
   private replaceCalloutMarkers(markdown: string): string {
+    console.log('🔥 REPLACE CALLOUT MARKERS - Starting replacement');
+    console.log('🔥 Callout replacements available:', this.calloutReplacements.size);
+    console.log('🔥 Markdown length before:', markdown.length);
+    
     // Replace all callout markers with their actual callout content
     this.calloutReplacements.forEach((calloutData, marker) => {
+      console.log(`🔥 Processing marker: ${marker}`);
+      console.log(`🔥 Callout type: ${calloutData.type}`);
+      console.log(`🔥 Content preview: ${calloutData.content.substring(0, 100)}...`);
+      
       // Convert the HTML content to markdown first
       const markdownContent = this.turndownService.turndown(calloutData.content);
+      console.log(`🔥 Markdown content: ${markdownContent.substring(0, 100)}...`);
       
       // Create the final callout
       const finalCallout = this.config.useAdmonitions
         ? `\n\`\`\`ad-${calloutData.type}\n${markdownContent.trim()}\n\`\`\`\n`
         : `\n> [!${calloutData.type}]\n> ${markdownContent.replace(/\n/g, '\n> ')}\n`;
       
-      markdown = markdown.replace(marker, finalCallout);
+      console.log(`🔥 Final callout: ${finalCallout.substring(0, 100)}...`);
+      
+      // Check if marker exists in markdown
+      const markerExists = markdown.includes(marker);
+      console.log(`🔥 Marker exists in markdown: ${markerExists}`);
+      
+      if (markerExists) {
+        markdown = markdown.replace(marker, finalCallout);
+        console.log(`🔥 Marker replaced successfully`);
+      } else {
+        console.log(`🔥 ERROR: Marker not found in markdown!`);
+      }
     });
+    
+    console.log('🔥 Markdown length after:', markdown.length);
     
     // Clear the replacements for next use
     this.calloutReplacements.clear();
