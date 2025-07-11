@@ -329,22 +329,32 @@ export class ObsidianFormatter {
     console.log('🎨 Admonitions enabled:', this.config.useAdmonitions);
     console.log('📦 Interactive callouts:', this.config.interactiveCallouts);
     
-    // Debug mode: analyze HTML structure first
+    // FORCE LOGGING - TEST LOG TO ENSURE VISIBILITY
+    console.log('\n🔥 FORCED TEST LOG - THIS SHOULD BE VISIBLE! HTML length:', html.length);
+    console.log('🔥 FORCED TEST LOG - Config debug:', this.config.debugMode);
+    console.log('🔥 FORCED TEST LOG - HTML preview:', html.substring(0, 200));
+    
+    // FORCE HTML ANALYSIS - Always run regardless of debug mode to see what's happening
+    console.log('\n🔍 === STARTING HTML ANALYSIS (FORCED) ===');
+    
+    // Stage 1: Analyzing HTML structure
+    const debugInfo = this.analyzeHtmlStructure(html);
+    console.log('📈 HTB Academy HTML Analysis Result:');
+    console.log('  Summary:', debugInfo.summary);
+    console.log('  Total elements:', debugInfo.totalElements);
+    console.log('  Potential callouts found:', debugInfo.potentialCallouts.length);
+    console.log('  Text patterns found:', debugInfo.textPatterns.length);
+    
+    // Save debug info to file for analysis (transparent to user)
+    this.saveDebugInfo(debugInfo);
+    
+    console.log('🔍 === HTML ANALYSIS COMPLETE ===\n');
+    
+    // Debug mode: additional analysis if enabled
     if (this.config.debugMode) {
-      console.log('\n🔍 === STARTING HTML ANALYSIS ===');
-      
-      // Stage 1: Analyzing HTML structure
-      const debugInfo = this.analyzeHtmlStructure(html);
-      console.log('📈 HTB Academy HTML Analysis Result:');
-      console.log('  Summary:', debugInfo.summary);
-      console.log('  Total elements:', debugInfo.totalElements);
-      console.log('  Potential callouts found:', debugInfo.potentialCallouts.length);
-      console.log('  Text patterns found:', debugInfo.textPatterns.length);
-      
-      // Save debug info to file for analysis (transparent to user)
-      this.saveDebugInfo(debugInfo);
-      
-      console.log('🔍 === HTML ANALYSIS COMPLETE ===\n');
+      console.log('🔍 === ADDITIONAL DEBUG INFO ===');
+      console.log('Full debug object:', JSON.stringify(debugInfo, null, 2));
+      console.log('🔍 === END ADDITIONAL DEBUG ===\n');
     }
     
     if (!this.config.enableCallouts) {
@@ -428,16 +438,20 @@ export class ObsidianFormatter {
       }
     });
     
-    // Log ALL tags found
-    console.log('🏷️ ALL HTML Tags Analysis:');
+    // FORCE LOG ALL TAGS - This should be visible!
+    console.log('🏷️ ALL HTML Tags Analysis (FORCED):');
+    console.log(`🔥 TOTAL UNIQUE TAGS FOUND: ${Object.keys(tagCounts).length}`);
+    
     Object.entries(tagCounts)
       .sort(([,a], [,b]) => b - a) // Sort by count descending
       .forEach(([tag, count]) => {
-        console.log(`  ${tag}: ${count} elements`);
+        console.log(`  🔥 ${tag}: ${count} elements`);
         tagExamples[tag]?.forEach(example => {
-          console.log(`    Example: ${example}`);
+          console.log(`    🔥 Example: ${example}`);
         });
       });
+    
+    console.log('🔥 END OF HTML TAGS ANALYSIS');
     
     // Analyze important semantic tags specifically
     const importantTags = [
@@ -482,24 +496,25 @@ export class ObsidianFormatter {
       '[data-callout]', '[data-alert]'
     ];
     
-    // First, analyze the native HTML structure
-    console.log('🔍 Native HTML Tag Analysis:');
+    // FORCE NATIVE HTML TAG ANALYSIS - This should be visible!
+    console.log('🔍 Native HTML Tag Analysis (FORCED):');
     const nativeTagAnalysis = ['code', 'pre', 'blockquote', 'aside', 'details', 'summary', 'table', 'th', 'td'];
     nativeTagAnalysis.forEach(tag => {
       const elements = $(tag);
+      console.log(`  🔥 ${tag}: ${elements.length} elements found`);
       if (elements.length > 0) {
-        console.log(`  ${tag}: ${elements.length} elements found`);
         elements.each((i, el) => {
           if (i < 2) { // Show first 2 examples
             const $el = $(el);
             const text = $el.text().trim();
             const classes = $el.attr('class') || 'no-class';
             const tagInfo = `${tag}.${classes}`;
-            console.log(`    Example: ${tagInfo} - "${text.substring(0, 80)}..."`);
+            console.log(`    🔥 Example: ${tagInfo} - "${text.substring(0, 80)}..."`);
           }
         });
       }
     });
+    console.log('🔥 END OF NATIVE TAGS ANALYSIS');
     
     testSelectors.forEach(selector => {
       try {
