@@ -309,19 +309,149 @@ export class ObsidianFormatter {
   }
   
   /**
-   * Group logical sections together (e.g., paragraph + table = one callout)
+   * Group logical sections together and detect HTB Academy patterns
    */
   private groupLogicalSections(html: string): string {
     const $ = cheerio.load(html);
     
     if (this.config.debugMode) {
-      console.log('🔍 Looking for logical content groups...');
+      console.log('🔍 Looking for HTB Academy content patterns...');
     }
     
-    // Find patterns: paragraph followed by table
+    // STEP 1: Detect and wrap Notes (b>Note:</b> patterns)
+    this.detectAndWrapNotes($);
+    
+    // STEP 2: Detect and wrap other callout patterns
+    this.detectAndWrapCalloutPatterns($);
+    
+    // STEP 3: Detect special code with color #9fef00
+    this.detectAndWrapSpecialCode($);
+    
+    // STEP 4: Find patterns: paragraph followed by table (existing logic)
+    this.detectAndWrapParagraphTablePatterns($);
+    
+    // STEP 5: Wrap remaining paragraphs in ad-info by default
+    this.wrapRemainingContentInInfo($);
+    
+    // Add turndown rules for all our custom content groups
+    this.addCustomCalloutRules();
+    
+    const groupedHtml = $.html();
+    if (this.config.debugMode) {
+      console.log('✅ HTB Academy patterns detected and grouped');
+    }
+    
+    return groupedHtml;
+  }
+  
+  /**
+   * Detect <b>Note:</b> patterns and wrap them in ad-note callouts
+   */
+  private detectAndWrapNotes($: cheerio.CheerioAPI): void {
+    if (this.config.debugMode) {
+      console.log('🔍 Detecting Note patterns...');
+    }
+    
+    // Look for <b>Note:</b> or <strong>Note:</strong> at the beginning of paragraphs
+    $('p').each((_, element) => {
+      const $p = $(element);
+      const text = $p.text().trim();
+      const html = $p.html() || '';
+      
+      // Check if paragraph starts with Note: in bold
+      if (html.match(/^<(b|strong)>\s*Note:\s*<\/(b|strong)>/i)) {
+        if (this.config.debugMode) {
+          console.log('📝 Found Note pattern:', text.substring(0, 100));
+        }
+        
+        // Wrap in note callout
+        const $wrapper = $('<div class="content-group-note"></div>');
+        $p.before($wrapper);
+        $wrapper.append($p);
+      }
+    });
+  }
+  
+  /**
+   * Detect other callout patterns (Warning, Tip, Important, etc.)
+   */
+  private detectAndWrapCalloutPatterns($: cheerio.CheerioAPI): void {
+    if (this.config.debugMode) {
+      console.log('🔍 Detecting other callout patterns...');
+    }
+    
+    const patterns = [
+      { regex: /^<(b|strong)>\s*Warning:\s*<\/(b|strong)>/i, type: 'warning' },
+      { regex: /^<(b|strong)>\s*Important:\s*<\/(b|strong)>/i, type: 'important' },
+      { regex: /^<(b|strong)>\s*Tip:\s*<\/(b|strong)>/i, type: 'tip' },
+      { regex: /^<(b|strong)>\s*Example:\s*<\/(b|strong)>/i, type: 'example' },
+      { regex: /^<(b|strong)>\s*Exercise:\s*<\/(b|strong)>/i, type: 'example' }
+    ];
+    
+    $('p').each((_, element) => {
+      const $p = $(element);
+      const html = $p.html() || '';
+      
+      // Skip if already wrapped
+      if ($p.parent().hasClass('content-group-note') || 
+          $p.parent().hasClass('content-group-warning') ||
+          $p.parent().hasClass('content-group-important') ||
+          $p.parent().hasClass('content-group-tip') ||
+          $p.parent().hasClass('content-group-example')) {
+        return;
+      }
+      
+      for (const pattern of patterns) {
+        if (html.match(pattern.regex)) {
+          if (this.config.debugMode) {
+            console.log(`📝 Found ${pattern.type} pattern:`, $p.text().substring(0, 100));
+          }
+          
+          const $wrapper = $(`<div class="content-group-${pattern.type}"></div>`);
+          $p.before($wrapper);
+          $wrapper.append($p);
+          break;
+        }
+      }
+    });
+  }
+  
+  /**
+   * Detect code with special color #9fef00
+   */
+  private detectAndWrapSpecialCode($: cheerio.CheerioAPI): void {
+    if (this.config.debugMode) {
+      console.log('🔍 Detecting special colored code...');
+    }
+    
+    $('code').each((_, element) => {
+      const $code = $(element);
+      const style = $code.attr('style') || '';
+      
+      // Check for the specific green color
+      if (style.includes('#9fef00') || style.includes('color: #9fef00')) {
+        if (this.config.debugMode) {
+          console.log('💚 Found special green code:', $code.text().substring(0, 50));
+        }
+        
+        // Add a special class to identify this code
+        $code.addClass('htb-special-code');
+      }
+    });
+  }
+  
+  /**
+   * Original logic: paragraph followed by table
+   */
+  private detectAndWrapParagraphTablePatterns($: cheerio.CheerioAPI): void {
     $('p').each((_, element) => {
       const $p = $(element);
       const $nextElement = $p.next();
+      
+      // Skip if already wrapped
+      if ($p.parent().attr('class')?.startsWith('content-group-')) {
+        return;
+      }
       
       // If next element is a table, group them together
       if ($nextElement.is('table')) {
@@ -329,36 +459,75 @@ export class ObsidianFormatter {
           console.log('🔗 Found paragraph + table pattern, grouping...');
         }
         
-        // Create a wrapper div with a special class for callout
         const $wrapper = $('<div class="content-group-note"></div>');
-        
-        // Move both elements into the wrapper
         $p.before($wrapper);
         $wrapper.append($p);
         $wrapper.append($nextElement);
       }
     });
-    
-    // Add turndown rule for our custom content groups
-    this.turndownService.addRule('contentGroup', {
-      filter: function (node: any) {
-        return node.classList && node.classList.contains('content-group-note');
-      },
-      replacement: (content: string) => {
-        if (this.config.useAdmonitions) {
-          return `\n\`\`\`ad-note\n${content.trim()}\n\`\`\`\n`;
-        } else {
-          return `\n> [!note]\n> ${content.replace(/\n/g, '\n> ')}\n`;
-        }
-      }
-    });
-    
-    const groupedHtml = $.html();
+  }
+  
+  /**
+   * Wrap remaining content in ad-info by default
+   */
+  private wrapRemainingContentInInfo($: cheerio.CheerioAPI): void {
     if (this.config.debugMode) {
-      console.log('✅ Logical sections grouped');
+      console.log('🔍 Wrapping remaining content in ad-info...');
     }
     
-    return groupedHtml;
+    $('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote').each((_, element) => {
+      const $element = $(element);
+      
+      // Skip if already wrapped in a content group
+      if ($element.parent().attr('class')?.startsWith('content-group-')) {
+        return;
+      }
+      
+      // Skip empty elements
+      if ($element.text().trim().length === 0) {
+        return;
+      }
+      
+      if (this.config.debugMode) {
+        console.log('📦 Wrapping in ad-info:', $element.text().substring(0, 50));
+      }
+      
+      const $wrapper = $('<div class="content-group-info"></div>');
+      $element.before($wrapper);
+      $wrapper.append($element);
+    });
+  }
+  
+  /**
+   * Add turndown rules for all custom callout types
+   */
+  private addCustomCalloutRules(): void {
+    const calloutTypes = ['note', 'warning', 'important', 'tip', 'example', 'info'];
+    
+    calloutTypes.forEach(type => {
+      this.turndownService.addRule(`contentGroup${type}`, {
+        filter: function (node: any) {
+          return node.classList && node.classList.contains(`content-group-${type}`);
+        },
+        replacement: (content: string) => {
+          if (this.config.useAdmonitions) {
+            return `\n\`\`\`ad-${type}\n${content.trim()}\n\`\`\`\n`;
+          } else {
+            return `\n> [!${type}]\n> ${content.replace(/\n/g, '\n> ')}\n`;
+          }
+        }
+      });
+    });
+    
+    // Special rule for HTB green code
+    this.turndownService.addRule('htbSpecialCode', {
+      filter: function (node: any) {
+        return node.classList && node.classList.contains('htb-special-code');
+      },
+      replacement: (content: string) => {
+        return `\`${content}\`{style="color: #9fef00"}`;
+      }
+    });
   }
 
   public formatTitle(title: string): string {
