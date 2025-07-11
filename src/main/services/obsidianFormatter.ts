@@ -777,7 +777,9 @@ export class ObsidianFormatter {
     
     return function calloutPlugin() {
       return function transformer(tree: any) {
-        console.log('🔍 === UNIFIED.JS CALLOUT PLUGIN ===');
+        if (config.debugMode) {
+          console.log('🔍 === UNIFIED.JS CALLOUT PLUGIN ===');
+        }
         
         visit(tree, 'element', (node: any, index: any, parent: any) => {
           const tagName = node.tagName;
@@ -792,38 +794,31 @@ export class ObsidianFormatter {
           // 1. Code elements (très important pour HTB Academy)
           if (tagName === 'code' || tagName === 'pre') {
             calloutType = 'code';
-            console.log(`🔥 Found ${tagName} element - converting to code callout`);
           }
           
           // 2. Tables (convert to info callouts)
           else if (tagName === 'table') {
             calloutType = 'info';
-            console.log(`🔥 Found table element - converting to info callout`);
           }
           
           // 3. Semantic HTML elements
           else if (tagName === 'blockquote') {
             calloutType = 'quote';
-            console.log(`🔥 Found blockquote element - converting to quote callout`);
           }
           else if (tagName === 'aside') {
             calloutType = 'note';
-            console.log(`🔥 Found aside element - converting to note callout`);
           }
           
           // 4. CSS class-based detection
           else if (className && typeof className === 'string') {
             if (className.includes('alert') || className.includes('info')) {
               calloutType = 'info';
-              console.log(`🔥 Found alert/info class: ${className}`);
             }
             else if (className.includes('warning') || className.includes('danger')) {
               calloutType = 'warning';
-              console.log(`🔥 Found warning/danger class: ${className}`);
             }
             else if (className.includes('example') || className.includes('exercise')) {
               calloutType = 'example';
-              console.log(`🔥 Found example/exercise class: ${className}`);
             }
           }
           
@@ -833,7 +828,7 @@ export class ObsidianFormatter {
             
             // Instead of complex AST manipulation, add a special marker
             // that we can easily replace later with proper markdown
-            const calloutMarker = `__UNIFIED_CALLOUT_${mappedType.toUpperCase()}_${Math.random().toString(36).substr(2, 9)}__`;
+            const calloutMarker = `UNIFIED_CALLOUT_${mappedType.toUpperCase()}_${Math.random().toString(36).substr(2, 9)}`;
             
             // Store the original node content for later processing
             if (!global.unifiedCalloutReplacements) {
@@ -848,21 +843,25 @@ export class ObsidianFormatter {
               originalNode: node
             });
             
-            // Replace the node with a simple text marker
+            // Replace the node with an HTML comment that unified.js will preserve
             const textNode = {
               type: 'text',
-              value: `\n\n${calloutMarker}\n\n`
+              value: `\n\n<!-- ${calloutMarker} -->\n\n`
             };
             
             if (parent && parent.children && Array.isArray(parent.children) && index !== undefined) {
               parent.children[index] = textNode;
             }
             
-            console.log(`🏆 Converted ${tagName} to ${mappedType} callout with marker ${calloutMarker}`);
+            if (config.debugMode) {
+              console.log(`🏆 Converted ${tagName} to ${mappedType} callout`);
+            }
           }
         });
         
-        console.log('🔍 === CALLOUT PLUGIN COMPLETE ===');
+        if (config.debugMode) {
+          console.log('🔍 === CALLOUT PLUGIN COMPLETE ===');
+        }
       };
     };
     
@@ -903,30 +902,32 @@ export class ObsidianFormatter {
     console.log(`🔥 Processing ${replacements.size} unified callout markers`);
     
     replacements.forEach((calloutData: any, marker: string) => {
-      console.log(`🔥 Processing marker: ${marker}`);
-      console.log(`🔥 Callout type: ${calloutData.type}`);
-      console.log(`🔥 Content preview: ${calloutData.content.substring(0, 100)}...`);
-      
       // Convert the HTML content to markdown first
       const markdownContent = this.turndownService.turndown(calloutData.content);
-      console.log(`🔥 Markdown content: ${markdownContent.substring(0, 100)}...`);
       
       // Create the final callout based on configuration
       const finalCallout = this.config.useAdmonitions
         ? `\n\`\`\`ad-${calloutData.type}\n${markdownContent.trim()}\n\`\`\`\n`
         : `\n> [!${calloutData.type}]\n> ${markdownContent.replace(/\n/g, '\n> ')}\n`;
       
-      console.log(`🔥 Final callout: ${finalCallout.substring(0, 100)}...`);
       
-      // Check if marker exists in markdown
-      const markerExists = markdown.includes(marker);
-      console.log(`🔥 Marker exists in markdown: ${markerExists}`);
+      // Check if marker exists in markdown (as HTML comment, may be escaped)
+      const commentMarker = `<!-- ${marker} -->`;
+      const escapedCommentMarker = `\\<!-- ${marker.replace(/_/g, '\\_')} -->`;
+      
+      let markerExists = markdown.includes(commentMarker);
+      let actualMarker = commentMarker;
+      
+      if (!markerExists) {
+        markerExists = markdown.includes(escapedCommentMarker);
+        actualMarker = escapedCommentMarker;
+      }
       
       if (markerExists) {
-        markdown = markdown.replace(marker, finalCallout);
-        console.log(`🔥 Marker replaced successfully`);
+        markdown = markdown.replace(actualMarker, finalCallout);
+        console.log(`🏆 Converted ${calloutData.type} callout successfully`);
       } else {
-        console.log(`🔥 ERROR: Marker not found in markdown!`);
+        console.log(`⚠️ Marker not found for ${calloutData.type} callout`);
       }
     });
     
